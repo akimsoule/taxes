@@ -12,6 +12,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function AuthContent({ children }: { children: React.ReactNode }) {
   const { isLoading, user } = useAuth();
 
+  console.log("AuthContent", { isLoading, user });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
