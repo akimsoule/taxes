@@ -27,14 +27,14 @@ const Layout: React.FC = () => {
   useEffect(() => {
     const checkLoginStatus = async () => {
       const isLoggedIn = localStorage.getItem("isLoggedIn");
-      if (isLoggedIn === "true") {
+      if (isLoggedIn === "true" && !user) {
         await signIn();
       }
     };
     checkLoginStatus();
   }, []);
 
-  
+
 
   // update user in database
   useEffect(() => {
