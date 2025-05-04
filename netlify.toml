@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --legacy-peer-deps && npm run build && prisma migrate deploy && prisma generate"
+  command = "npm install && npm run build && npx prisma migrate deploy && npx prisma generate"
   publish = "dist"
 
 [[redirects]]
