@@ -34,8 +34,6 @@ const Layout: React.FC = () => {
     checkLoginStatus();
   }, [signIn, user]);
 
-
-
   // update user in database
   useEffect(() => {
     if (user) {
@@ -94,6 +92,11 @@ const Layout: React.FC = () => {
     }
   }, [darkMode]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    signOut({ returnTo: window.location.origin });
+  };
+
   return (
     <div
       className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300`}
@@ -106,7 +109,7 @@ const Layout: React.FC = () => {
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
           user={user}
-          onLogout={signOut} // Utilisation de `signOut` directement
+          onLogout={handleLogout} // Utilisation de `signOut` directement
         />
 
         <main className="flex-grow p-4 md:p-6 pt-24 md:pt-24">

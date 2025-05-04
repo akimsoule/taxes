@@ -16,7 +16,9 @@ export function AuthContent({ children }: { children: React.ReactNode }) {
   // Restaurer l'utilisateur après un rafraîchissement
   useEffect(() => {
     const isLoggedIn = localStorage.getItem("isLoggedIn");
-    if (isLoggedIn === "true" && !user) {
+    console.log("isLoggedIn", isLoggedIn);
+    debugger;
+    if (isLoggedIn && isLoggedIn === "true" && !user) {
       signIn(); // Tente de reconnecter l'utilisateur
     }
   }, [user, signIn]);
