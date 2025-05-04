@@ -121,6 +121,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, user }) => {
               <Image className="h-5 w-5" />
               <span>Images</span>
             </NavLink>
+            <NavLink to="/files" className={navLinkClass} onClick={toggleSidebar}>
+              <Image className="h-5 w-5" />
+              <span>Files</span>
+            </NavLink>
           </nav>
         </div>
       </aside>

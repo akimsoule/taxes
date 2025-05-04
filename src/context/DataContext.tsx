@@ -30,8 +30,15 @@ interface DataContextProps {
     page?: number,
     pageSize?: number
   ) => Promise<{ totalItems: number; data: any[] }>; // Ajout de la fonction pour récupérer les données d'image avec pagination
+  fetchFileData: (
+    type: DataType,
+    page?: number,
+    pageSize?: number
+  ) => Promise<{ totalItems: number; data: any[] }>; // Ajout de la fonction pour récupérer les données de fichier avec pagination
   addImage: (file: File, userEmail: string) => Promise<void>;
+  addFile: (file: File, userEmail: string) => Promise<void>;
   deleteImage: (type: DataType, id: string) => Promise<void>;
+  deleteFile: (type: DataType, id: string) => Promise<void>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
 }
@@ -123,7 +130,33 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
     } finally {
       setIsLoading(false);
     }
-  }
+  };
+
+  const fetchFileData = async (
+    type: DataType,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<{ totalItems: number; data: any[] }> => {
+    setIsLoading(true);
+    try {
+      const { items: data, pagination } = await dataService.fetchFileData(
+        type,
+        page,
+        pageSize
+      );
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: data,
+          pagination,
+        },
+      }));
+      return { totalItems: pagination.totalItems, data };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const addBatchItems = async (
     type: DataType,
@@ -132,7 +165,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
   ) => {
     setIsLoading(true);
     try {
-      const newItems = await dataService.addBatchItems(type, items, uniqueProps);
+      const newItems = await dataService.addBatchItems(
+        type,
+        items,
+        uniqueProps
+      );
       setData((prevState) => ({
         ...prevState,
         [type]: {
@@ -145,7 +182,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  const addImage = async (file : File, userEmail: string) => {
+  const addImage = async (file: File, userEmail: string) => {
     setIsLoading(true);
     try {
       const newImage = await dataService.addImage(file, userEmail);
@@ -158,6 +195,24 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
       }));
     } catch (error) {
       console.error("Error adding image:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addFile = async (file: File, userEmail: string) => {
+    setIsLoading(true);
+    try {
+      const newFile = await dataService.addFile(file, userEmail);
+      setData((prevState) => ({
+        ...prevState,
+        files: {
+          ...prevState.files,
+          items: [...prevState.files.items, newFile],
+        },
+      }));
+    } catch (error) {
+      console.error("Error adding file:", error);
     } finally {
       setIsLoading(false);
     }
@@ -176,6 +231,24 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
       }));
     } catch (error) {
       console.error("Error deleting image:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteFile = async (type: DataType, id: string) => {
+    setIsLoading(true);
+    try {
+      await dataService.deleteFile(type, id);
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: prevState[type].items.filter((item) => item.id !== id),
+        },
+      }));
+    } catch (error) {
+      console.error("Error deleting file:", error);
     } finally {
       setIsLoading(false);
     }
@@ -250,8 +323,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
         addBatchItems, // Ajout de la fonction pour ajouter des lots d'éléments
         fetchData,
         fetchImageData, // Mise à jour pour inclure la pagination
+        fetchFileData, // Ajout de la fonction pour récupérer les données de fichier avec pagination
         addImage,
+        addFile,
         deleteImage,
+        deleteFile,
         isLoading,
         setIsLoading,
       }}

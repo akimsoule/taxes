@@ -54,6 +54,16 @@ export interface Image {
   userEmail: string;
 }
 
+export interface File {
+  id: string;
+  base64: string;
+  fileName: string;
+  fileType: string;
+  ocrRawData: string;
+  uploadedAt: string;
+  userEmail: string;
+}
+
 export interface Receipt {
   id: string;
   date: string;
@@ -102,6 +112,7 @@ export type DataType =
   | "receipts"
   | "docs"
   | "images"
+  | "files"
   | "travels"
   | "activities"
   | "categories"
@@ -156,6 +167,15 @@ export interface DataState {
   };
   activities: {
     items: Activity[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  files: {
+    items: File[];
     pagination: {
       page: number;
       pageSize: number;

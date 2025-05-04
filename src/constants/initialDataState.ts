@@ -37,6 +37,15 @@ export const initialDataState: DataState = {
       totalPages: 0,
     },
   },
+  files: {
+    items: [],
+    pagination: {
+      page: 0,
+      pageSize: 0,
+      totalItems: 0,
+      totalPages: 0,
+    },
+  },
   images: {
     items: [],
     pagination: {

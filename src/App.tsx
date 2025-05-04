@@ -16,6 +16,7 @@ import MerchantsPage from "./pages/MerchantsPage";
 import ImagesPage from "./pages/ImagesPage";
 import DocsPage from "./pages/DocsPage";
 import BookViewPage from "./pages/BookViewPage";
+import FilesPage from "./pages/FilesPage";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
                 <Route path="docs" element={<DocsPage />} />
                 <Route path="/book-view/:docId" element={<BookViewPage />} />
                 <Route path="receiptImages" element={<ImagesPage />} />
+                <Route path="files" element={<FilesPage />} />
                 <Route path="travels" element={<TravelsPage />} />
                 <Route path="activities" element={<ActivitiesPage />} />
                 <Route path="categories" element={<CategoriesPage />} />

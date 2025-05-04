@@ -205,6 +205,60 @@ export const fetchImageData = async (
   }
 };
 
+// Fonction pour récupérer les fichiers avec pagination
+export const fetchFileData = async (
+  type: DataType,
+  page: number = 1,
+  pageSize: number = 10
+): Promise<{
+  items: any[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}> => {
+  try {
+    const response = await fetch(
+      `${fileApiUrl}?type=${type}&action=get&page=${page}&pageSize=${pageSize}`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${type}: ${response.statusText}`);
+    }
+    const result = await response.json();
+
+    return {
+      items: result.items || [],
+      pagination: {
+        page: result.pagination?.page || page,
+        pageSize: result.pagination?.pageSize || pageSize,
+        totalItems: result.pagination?.totalItems || 0,
+        totalPages: result.pagination?.totalPages || 1,
+      },
+    };
+  } catch (error) {
+    console.error(`Error fetching ${type}:`, error);
+    const localItems = localData[type]?.items || [];
+    const totalItems = localItems.length;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const paginatedItems = localItems.slice(
+      (page - 1) * pageSize,
+      page * pageSize
+    );
+
+    return {
+      items: paginatedItems,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+      },
+    };
+  }
+};
+
 // Fonction pour ajouter un lot d'éléments
 export const addBatchItems = async (
   type: DataType,
@@ -298,6 +352,54 @@ export const addItem = async (
   }
 };
 
+// Fonction pour ajouter un fichier
+export const addFile = async (file: File, userEmail: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = async () => {
+      const base64File = reader.result as string;
+
+      try {
+        const newFile = {
+          id: Date.now().toString(),
+          base64: base64File,
+          uploadedAt: new Date().toISOString(),
+          userEmail: userEmail,
+          fileName: file.name,
+          fileType: file.type,
+        };
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("metadata", JSON.stringify(newFile));
+
+        const response = await fetch(`${fileApiUrl}?type=files&action=post`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to upload file: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        resolve({ ...newFile, ...result });
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        reject(error);
+      }
+    };
+
+    reader.onerror = (error) => {
+      console.error("Error reading file:", error);
+      reject(error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+};
+
 // Fonction pour mettre à jour un élément
 export const updateItem = async (
   type: DataType,
@@ -369,6 +471,24 @@ export const deleteItem = async (type: DataType, id: string): Promise<void> => {
     localData[type].items = localData[type].items.filter(
       (item) => item.id !== id
     ) as (typeof localData)[typeof type]["items"];
+  }
+};
+
+// Fonction pour supprimer un fichier
+export const deleteFile = async (type: DataType, id: string): Promise<void> => {
+  try {
+    const response = await fetch(
+      `${fileApiUrl}?type=${type}&action=delete&id=${id}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to delete file: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error("Error deleting file:", error);
+    throw error;
   }
 };
 
