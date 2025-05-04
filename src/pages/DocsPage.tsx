@@ -1,49 +1,55 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
 import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
+import { Doc } from "../types/models";
 
-const ActivitiesPage: React.FC = () => {
+const DocsPage: React.FC = () => {
   const { data, fetchData, addItem, updateItem, deleteItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<any | null>(null);
+  const [editingDoc, setEditingDoc] = useState<Doc | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // État pour le chargement
-  const [hasFetched, setHasFetched] = useState(false); // État pour vérifier si les données ont été chargées
-  const totalItemsFetched = 100;
+  const totalItemsFetched = 1000; // Nombre d'éléments par page
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!hasFetched) {
-      const fetchActivities = async () => {
+      const fetchDocs = async () => {
         setIsLoading(true); // Début du chargement
         try {
-          await fetchData("activities", 1, totalItemsFetched);
-          setHasFetched(true); // Marquer les données comme chargées
+          await fetchData("docs", 1, totalItemsFetched);
+          setHasFetched(true);
         } finally {
           setIsLoading(false); // Fin du chargement
         }
       };
 
-      fetchActivities();
+      fetchDocs();
     }
   }, [hasFetched, fetchData, totalItemsFetched]);
 
-  const handleAdd = async (newActivity: any) => {
+  const handleAdd = async (newDoc: Doc) => {
     setIsLoading(true); // Début du chargement
     try {
-      await addItem("activities", { ...newActivity, id: Date.now().toString() });
+      await addItem("docs", {
+        ...newDoc,
+        createdAt: new Date().toISOString(),
+      });
       setIsModalOpen(false);
     } finally {
       setIsLoading(false); // Fin du chargement
     }
   };
 
-  const handleUpdate = async (updatedActivity: any) => {
+  const handleUpdate = async (updatedDoc: Doc) => {
     setIsLoading(true); // Début du chargement
     try {
-      await updateItem("activities", updatedActivity);
-      setEditingActivity(null);
+      await updateItem("docs", updatedDoc);
+      setEditingDoc(null);
       setIsModalOpen(false);
     } finally {
       setIsLoading(false); // Fin du chargement
@@ -53,20 +59,24 @@ const ActivitiesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     setIsLoading(true); // Début du chargement
     try {
-      await deleteItem("activities", id);
+      await deleteItem("docs", id);
     } finally {
       setIsLoading(false); // Fin du chargement
     }
   };
 
   const openModalForAdd = () => {
-    setEditingActivity(null);
+    setEditingDoc(null);
     setIsModalOpen(true);
   };
 
-  const openModalForEdit = (activity: any) => {
-    setEditingActivity(activity);
+  const openModalForEdit = (doc: Doc) => {
+    setEditingDoc(doc);
     setIsModalOpen(true);
+  };
+
+  const openBookView = (docId: string) => {
+    navigate(`/book-view/${docId}`);
   };
 
   return (
@@ -79,70 +89,69 @@ const ActivitiesPage: React.FC = () => {
 
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Activities
+          Documents
         </h1>
         <button
           onClick={openModalForAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium p-2 rounded-full flex items-center justify-center"
-          aria-label="Add Activity"
+          className="bg-green-600 hover:bg-green-700 text-white font-medium p-2 rounded-full flex items-center justify-center"
         >
           <Plus className="h-5 w-5" />
         </button>
       </div>
 
       <DataTable
-        data={data.activities} // Passez l'objet complet contenant items et pagination
+        data={data.docs} // Passez l'objet complet contenant items et pagination
         headers={[
-          { key: "name", label: "Name" },
-          { key: "startDate", label: "Start Date" },
-          { key: "endDate", label: "End Date" },
-          { key: "userId", label: "User ID" },
+          { key: "title", label: "Title" },
+          { key: "description", label: "Description" },
+          { key: "createdAt", label: "Created At" },
           {
             key: "actions",
             label: "Actions",
-            render: (activity: any) => (
-              <div className="flex space-x-2">
+            render: (doc: any) => (
+              <div className="flex flex-col space-y-2">
                 <button
-                  onClick={() => openModalForEdit(activity)}
+                  onClick={() => openModalForEdit(doc)}
                   className="text-blue-600 dark:text-blue-400"
                 >
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(activity.id)}
+                  onClick={() => handleDelete(doc.id)}
                   className="text-red-600 dark:text-red-400"
                 >
                   Delete
+                </button>
+                <button
+                  onClick={() => openBookView(doc.id)}
+                  className="text-purple-600 dark:text-purple-400"
+                >
+                  View as Book
                 </button>
               </div>
             ),
           },
         ]}
-        emptyMessage="No activities available."
+        emptyMessage="No documents available."
       />
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingActivity ? "Edit Activity" : "Add Activity"}
+        title={editingDoc ? "Edit Document" : "Add Document"}
       >
         <CRUDForm
           initialData={
-            editingActivity || {
-              name: "",
-              startDate: "",
-              endDate: "",
-              userId: "",
-              createdAt: "",
-              updatedAt: "",
+            editingDoc || {
+              title: "",
+              description: "",
+              createdAt: new Date().toISOString(),
             }
           }
-          onSubmit={editingActivity ? handleUpdate : handleAdd}
+          onSubmit={editingDoc ? handleUpdate : handleAdd}
           fields={[
-            { key: "name", label: "Name", type: "text" },
-            { key: "startDate", label: "Start Date", type: "date" },
-            { key: "endDate", label: "End Date", type: "date" },
-            { key: "userId", label: "User ID", type: "text" },
+            { key: "title", label: "Title", type: "text" },
+            { key: "description", label: "Description", type: "textarea" },
           ]}
         />
       </Modal>
@@ -150,4 +159,4 @@ const ActivitiesPage: React.FC = () => {
   );
 };
 
-export default ActivitiesPage;
+export default DocsPage;

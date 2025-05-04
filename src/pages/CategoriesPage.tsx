@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
@@ -6,23 +6,57 @@ import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
 
 const CategoriesPage: React.FC = () => {
-  const { data, addItem, updateItem, deleteItem } = useDataContext();
+  const { data, fetchData, addItem, updateItem, deleteItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // État pour le chargement
+  const [hasFetched, setHasFetched] = useState(false); // État pour vérifier si les données ont été chargées
+  const totalItemsFetched = 1000;
 
-  const handleAdd = (newCategory: any) => {
-    addItem("categories", { ...newCategory, id: Date.now().toString() });
-    setIsModalOpen(false);
+  useEffect(() => {
+    if (!hasFetched) {
+      const fetchCategories = async () => {
+        setIsLoading(true); // Début du chargement
+        try {
+          await fetchData("categories", 1, totalItemsFetched);
+          setHasFetched(true); // Marquer les données comme chargées
+        } finally {
+          setIsLoading(false); // Fin du chargement
+        }
+      };
+
+      fetchCategories();
+    }
+  }, [hasFetched, fetchData, totalItemsFetched]);
+
+  const handleAdd = async (newCategory: any) => {
+    setIsLoading(true); // Début du chargement
+    try {
+      await addItem("categories", { ...newCategory });
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false); // Fin du chargement
+    }
   };
 
-  const handleUpdate = (updatedCategory: any) => {
-    updateItem("categories", updatedCategory);
-    setEditingCategory(null);
-    setIsModalOpen(false);
+  const handleUpdate = async (updatedCategory: any) => {
+    setIsLoading(true); // Début du chargement
+    try {
+      await updateItem("categories", updatedCategory);
+      setEditingCategory(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false); // Fin du chargement
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteItem("categories", id);
+  const handleDelete = async (id: string) => {
+    setIsLoading(true); // Début du chargement
+    try {
+      await deleteItem("categories", id);
+    } finally {
+      setIsLoading(false); // Fin du chargement
+    }
   };
 
   const openModalForAdd = () => {
@@ -37,6 +71,12 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="loader border-t-4 border-blue-500 rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Categories
@@ -51,9 +91,8 @@ const CategoriesPage: React.FC = () => {
       </div>
 
       <DataTable
-        data={data.categories}
+        data={data.categories} // Passez l'objet complet contenant items et pagination
         headers={[
-          { key: "id", label: "ID" },
           { key: "name", label: "Name" },
           {
             key: "actions",
@@ -79,7 +118,6 @@ const CategoriesPage: React.FC = () => {
         emptyMessage="No categories available."
       />
 
-      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -90,9 +128,7 @@ const CategoriesPage: React.FC = () => {
             editingCategory || { name: "", createdAt: "", updatedAt: "" }
           }
           onSubmit={editingCategory ? handleUpdate : handleAdd}
-          fields={[
-            { key: "name", label: "Name", type: "text" }
-          ]}
+          fields={[{ key: "name", label: "Name", type: "text" }]}
         />
       </Modal>
     </div>

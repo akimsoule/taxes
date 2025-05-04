@@ -1,53 +1,40 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { DataState, DataType } from "../types/models";
+import * as dataService from "../services/dataService";
+import { initialDataState } from "../constants/initialDataState";
 
 interface DataContextProps {
   data: DataState;
   setDataByType: (type: DataType, newData: any[]) => void;
-  addItem: (type: DataType, item: any, uniqueProps?: string[]) => void;
-  updateItem: (type: DataType, updatedItem: any) => void;
-  deleteItem: (type: DataType, id: string) => void;
+  addItem: (type: DataType, item: any, uniqueProps?: string[]) => Promise<void>;
+  updateItem: (type: DataType, updatedItem: any) => Promise<void>;
+  deleteItem: (type: DataType, id: string) => Promise<void>;
+  addBatchItems: (
+    type: DataType,
+    items: any[],
+    uniqueProps?: string[]
+  ) => Promise<void>; // Ajout de la fonction pour ajouter des lots d'éléments
+  fetchData: (
+    type: DataType,
+    page?: number,
+    pageSize?: number
+  ) => Promise<{ totalItems: number; data: any[] }>; // Ajout des paramètres de pagination
+  fetchImageData: (
+    type: DataType,
+    page?: number,
+    pageSize?: number
+  ) => Promise<{ totalItems: number; data: any[] }>; // Ajout de la fonction pour récupérer les données d'image avec pagination
+  addImage: (file: File, userEmail: string) => Promise<void>;
+  deleteImage: (type: DataType, id: string) => Promise<void>;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
 }
-
-const initialDataState: DataState = {
-  records: [],
-  receipts: [],
-  receiptImages: [
-    {
-      id: "img1",
-      receiptId: "r1",
-      imageUrl: "https://example.com/receipt1.jpg",
-      ocrRawData: "Total: $100.5",
-      uploadedAt: "2025-04-28T10:00:00Z",
-    },
-    {
-      id: "img2",
-      receiptId: "r2",
-      imageUrl: "https://example.com/receipt2.jpg",
-      uploadedAt: "2025-04-28T10:05:00Z",
-    },
-  ],
-  travels: [],
-  activities: [],
-  categories: [],
-  merchants: [],
-  banks: [
-    {
-      id: "TANGERINE",
-      name: "Tangerine",
-    },
-    {
-      id: "DESJARDINS",
-      name: "Desjardins",
-    },
-    {
-      id: "RBC",
-      name: "RBC",
-    },
-],
-};
 
 const DataContext = createContext<DataContextProps | undefined>(undefined);
 
@@ -57,64 +44,199 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
   const [data, setData] = useState<DataState>(initialDataState);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    const initializeData = async () => {
+      setIsLoading(true);
+      try {
+        await dataService.initializeDatabase();
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
   const setDataByType = (type: DataType, newData: any[]) => {
     setData((prevState) => ({
       ...prevState,
-      [type]: newData,
+      [type]: {
+        ...prevState[type],
+        items: newData,
+      },
     }));
   };
 
-  // CRUD Operations
-  const addItem = (
+  const fetchData = async (
     type: DataType,
-    item: any,
-    uniqueProps: string[] = ["id"]
-  ) => {
-    const now = new Date().toISOString();
-
-    setData((prevState) => {
-      const exists = prevState[type].some((existingItem) =>
-        uniqueProps.every(
-          (prop) =>
-            existingItem[prop as keyof typeof existingItem] ===
-            item[prop as keyof typeof item]
-        )
-      );
-
-      if (exists) {
-        console.warn(
-          `Item with unique properties ${JSON.stringify(
-            uniqueProps
-          )} already exists in "${type}".`
-        );
-        return prevState;
-      }
-
-      return {
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<{ totalItems: number; data: any[] }> => {
+    setIsLoading(true);
+    try {
+      const {
+        items: data,
+        pagination: { totalItems, totalPages },
+      } = await dataService.fetchData(type, page, pageSize);
+      setData((prevState) => ({
         ...prevState,
-        [type]: [
+        [type]: {
           ...prevState[type],
-          { ...item, createdAt: now, updatedAt: now },
-        ],
-      };
-    });
+          items: data,
+          pagination: {
+            page,
+            pageSize,
+            totalItems,
+            totalPages,
+          },
+        },
+      }));
+      return { totalItems, data };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateItem = (type: DataType, updatedItem: any) => {
-    const now = new Date().toISOString();
-    setData((prevState) => ({
-      ...prevState,
-      [type]: prevState[type].map((item) =>
-        item.id === updatedItem.id ? { ...updatedItem, updatedAt: now } : item
-      ),
-    }));
+  const fetchImageData = async (
+    type: DataType,
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<{ totalItems: number; data: any[] }> => {
+    setIsLoading(true);
+    try {
+      const { items: data, pagination } = await dataService.fetchImageData(
+        type,
+        page,
+        pageSize
+      );
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: data,
+          pagination,
+        },
+      }));
+      return { totalItems: pagination.totalItems, data };
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const addBatchItems = async (
+    type: DataType,
+    items: any[],
+    uniqueProps = ["id"]
+  ) => {
+    setIsLoading(true);
+    try {
+      const newItems = await dataService.addBatchItems(type, items, uniqueProps);
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: [...prevState[type].items, ...newItems],
+        },
+      }));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const deleteItem = (type: DataType, id: string) => {
-    setData((prevState) => ({
-      ...prevState,
-      [type]: prevState[type].filter((item) => item.id !== id),
-    }));
+  const addImage = async (file : File, userEmail: string) => {
+    setIsLoading(true);
+    try {
+      const newImage = await dataService.addImage(file, userEmail);
+      setData((prevState) => ({
+        ...prevState,
+        images: {
+          ...prevState.images,
+          items: [...prevState.images.items, newImage],
+        },
+      }));
+    } catch (error) {
+      console.error("Error adding image:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteImage = async (type: DataType, id: string) => {
+    setIsLoading(true);
+    try {
+      await dataService.deleteImage(type, id);
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: prevState[type].items.filter((item) => item.id !== id),
+        },
+      }));
+    } catch (error) {
+      console.error("Error deleting image:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addItem = async (type: DataType, item: any, uniqueProps = ["id"]) => {
+    setIsLoading(true);
+    try {
+      const newItem = await dataService.addItem(type, item, uniqueProps);
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: [...prevState[type].items, newItem],
+        },
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateItem = async (
+    type: DataType,
+    updatedItem: any,
+    uniqProps = ["id"]
+  ) => {
+    setIsLoading(true);
+    try {
+      const updatedData = await dataService.updateItem(
+        type,
+        updatedItem,
+        uniqProps
+      );
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: prevState[type].items.map((item) =>
+            item.id === updatedData.id ? updatedData : item
+          ),
+        },
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteItem = async (type: DataType, id: string) => {
+    setIsLoading(true);
+    try {
+      await dataService.deleteItem(type, id);
+      setData((prevState) => ({
+        ...prevState,
+        [type]: {
+          ...prevState[type],
+          items: prevState[type].items.filter((item) => item.id !== id),
+        },
+      }));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -125,6 +247,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({
         addItem,
         updateItem,
         deleteItem,
+        addBatchItems, // Ajout de la fonction pour ajouter des lots d'éléments
+        fetchData,
+        fetchImageData, // Mise à jour pour inclure la pagination
+        addImage,
+        deleteImage,
         isLoading,
         setIsLoading,
       }}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
@@ -6,26 +6,53 @@ import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
 
 const ReceiptsPage: React.FC = () => {
-  const { data, addItem, updateItem, deleteItem } = useDataContext();
+  const { data, fetchData, addItem, updateItem, deleteItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReceipt, setEditingReceipt] = useState<any | null>(null);
+  const totalItemsFetched = 10;
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAdd = (newReceipt: any) => {
-    addItem("receipts", {
-      ...newReceipt,
-      id: Date.now().toString(),
-    });
-    setIsModalOpen(false);
+  useEffect(() => {
+    const fetchReceipts = async () => {
+      setIsLoading(true);
+      try {
+        await fetchData("receipts", 1, totalItemsFetched);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReceipts();
+  }, []);
+
+  const handleAdd = async (newReceipt: any) => {
+    setIsLoading(true);
+    try {
+      await addItem("receipts", { ...newReceipt });
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedReceipt: any) => {
-    updateItem("receipts", updatedReceipt);
-    setEditingReceipt(null);
-    setIsModalOpen(false);
+  const handleUpdate = async (updatedReceipt: any) => {
+    setIsLoading(true);
+    try {
+      await updateItem("receipts", updatedReceipt);
+      setEditingReceipt(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteItem("receipts", id);
+  const handleDelete = async (id: string) => {
+    setIsLoading(true);
+    try {
+      await deleteItem("receipts", id);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openModalForAdd = () => {
@@ -40,6 +67,12 @@ const ReceiptsPage: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="loader border-t-4 border-blue-500 rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Receipts
@@ -53,7 +86,6 @@ const ReceiptsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Data Table */}
       <DataTable
         data={data.receipts}
         headers={[
@@ -87,7 +119,6 @@ const ReceiptsPage: React.FC = () => {
         emptyMessage="No receipts available. Please add receipts."
       />
 
-      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

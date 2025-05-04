@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
@@ -6,30 +6,64 @@ import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
 import HTMLTangerineUploader from "../components/HTMLTangerineUploader";
 import HTMLRBCUploader from "../components/HTMLRBCUploader";
+import { Record } from "../types/models";
 
 const RecordsPage: React.FC = () => {
-  const { data, addItem, updateItem, deleteItem } = useDataContext();
+  const { data, fetchData, addItem, updateItem, deleteItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<any | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Record | null>(null);
   const [selectedBank, setSelectedBank] = useState<string>("");
+  const totalItemsFetched = 1000;
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
-  const handleAdd = (newRecord: any) => {
-    addItem("records", {
-      ...newRecord,
-      id: Date.now().toString(),
-      bankId: selectedBank,
-    });
-    setIsModalOpen(false);
+  useEffect(() => {
+    if (!hasFetched) {
+      const fetchRecords = async () => {
+        setIsLoading(true);
+        try {
+          await fetchData("records", 1, totalItemsFetched);
+          setHasFetched(true);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchRecords();
+    }
+  }, [hasFetched, fetchData, totalItemsFetched]);
+
+  const handleAdd = async (newRecord: Record) => {
+    setIsLoading(true);
+    try {
+      await addItem("records", {
+        ...newRecord,
+        bankName: selectedBank,
+      });
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedRecord: any) => {
-    updateItem("records", updatedRecord);
-    setEditingRecord(null);
-    setIsModalOpen(false);
+  const handleUpdate = async (updatedRecord: Record) => {
+    setIsLoading(true);
+    try {
+      await updateItem("records", updatedRecord);
+      setEditingRecord(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteItem("records", id);
+  const handleDelete = async (id: string) => {
+    setIsLoading(true);
+    try {
+      await deleteItem("records", id);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openModalForAdd = () => {
@@ -37,7 +71,7 @@ const RecordsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const openModalForEdit = (record: any) => {
+  const openModalForEdit = (record: Record) => {
     setEditingRecord(record);
     setIsModalOpen(true);
   };
@@ -48,6 +82,12 @@ const RecordsPage: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="loader border-t-4 border-blue-500 rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Records
@@ -74,7 +114,7 @@ const RecordsPage: React.FC = () => {
           <option value="" disabled>
             Choose a bank
           </option>
-          {data.banks.map((bank: any) => (
+          {data.banks.items.map((bank: any) => (
             <option key={bank.id} value={bank.id}>
               {bank.name}
             </option>
@@ -90,16 +130,15 @@ const RecordsPage: React.FC = () => {
       <DataTable
         data={data.records}
         headers={[
-          // { key: "id", label: "ID" },
           { key: "date", label: "Date" },
+          { key: "bankName", label: "Bank" },
+          { key: "categoryName", label: "Category Name" },
           { key: "description", label: "Description" },
           { key: "amount", label: "Amount" },
-          { key: "currency", label: "Currency" },
           { key: "deductible", label: "Deductible" },
           { key: "deductibleAmount", label: "Deductible Amount" },
-          { key: "categoryId", label: "Category ID" },
-          { key: "activityId", label: "Activity ID" },
-          { key: "bankId", label: "Bank ID" },
+          
+          { key: "activityName", label: "Activity" },
           { key: "receiptId", label: "Receipt ID" },
           {
             key: "actions",
@@ -166,7 +205,7 @@ const RecordsPage: React.FC = () => {
               key: "bankId",
               label: "Bank",
               type: "select",
-              options: data.banks.map((bank: any) => ({
+              options: data.banks.items.map((bank: any) => ({
                 value: bank.id,
                 label: bank.name,
               })),

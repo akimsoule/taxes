@@ -81,39 +81,43 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, user }) => {
           )}
 
           <nav className="space-y-1">
-            <NavLink to="/" className={navLinkClass} end>
+            <NavLink to="/" className={navLinkClass} end onClick={toggleSidebar}>
               <Home className="h-5 w-5" />
               <span>Dashboard</span>
             </NavLink>
-            <NavLink to="/records" className={navLinkClass}>
+            <NavLink to="/records" className={navLinkClass} onClick={toggleSidebar}>
               <FileText className="h-5 w-5" />
               <span>Records</span>
             </NavLink>
-            <NavLink to="/travels" className={navLinkClass}>
+            <NavLink to="/travels" className={navLinkClass} onClick={toggleSidebar}>
               <Car className="h-5 w-5" />
               <span>Travels</span>
             </NavLink>
-            <NavLink to="/activities" className={navLinkClass}>
+            <NavLink to="/activities" className={navLinkClass} onClick={toggleSidebar}>
               <Activity className="h-5 w-5" />
               <span>Activities</span>
             </NavLink>
-            <NavLink to="/categories" className={navLinkClass}>
+            <NavLink to="/categories" className={navLinkClass} onClick={toggleSidebar}>
               <Tag className="h-5 w-5" />
               <span>Categories</span>
             </NavLink>
-            <NavLink to="/merchants" className={navLinkClass}>
+            <NavLink to="/merchants" className={navLinkClass} onClick={toggleSidebar}>
               <Store className="h-5 w-5" />
               <span>Merchants</span>
             </NavLink>
-            <NavLink to="/banks" className={navLinkClass}>
+            <NavLink to="/banks" className={navLinkClass} onClick={toggleSidebar}>
               <Building className="h-5 w-5" />
               <span>Banks</span>
             </NavLink>
-            <NavLink to="/receipts" className={navLinkClass}>
+            <NavLink to="/docs" className={navLinkClass} onClick={toggleSidebar}>
+              <Receipt className="h-5 w-5" />
+              <span>Documents</span>
+            </NavLink>
+            <NavLink to="/receipts" className={navLinkClass} onClick={toggleSidebar}>
               <Receipt className="h-5 w-5" />
               <span>Receipts</span>
             </NavLink>
-            <NavLink to="/receiptImages" className={navLinkClass}>
+            <NavLink to="/receiptImages" className={navLinkClass} onClick={toggleSidebar}>
               <Image className="h-5 w-5" />
               <span>Images</span>
             </NavLink>

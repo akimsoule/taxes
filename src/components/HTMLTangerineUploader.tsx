@@ -1,11 +1,12 @@
 import React, { useRef } from "react";
 import toast from "react-hot-toast";
 import { Record } from "../types/models";
-import { useDataContext } from "../context/DataContext";
+import { useAuth } from "@workos-inc/authkit-react";
+import { addEntities } from "../utils";
 
 const HTMLTangerineUploader: React.FC = () => {
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addItem } = useDataContext();
 
   const parseDate = (dateString: string): Date | null => {
     const months: { [key: string]: number } = {
@@ -43,12 +44,6 @@ const HTMLTangerineUploader: React.FC = () => {
     return new Date(parseInt(year, 10), month, parseInt(day, 10));
   };
 
-  const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // Mois indexé à 0
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
 
   const handleFileChange = async (file: File | null) => {
     if (!file) return;
@@ -59,7 +54,7 @@ const HTMLTangerineUploader: React.FC = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       const parsedRecords = parseHTML(content);
       if (parsedRecords.length === 0) {
@@ -67,32 +62,7 @@ const HTMLTangerineUploader: React.FC = () => {
         return;
       }
 
-      for (const record of parsedRecords) {
-        addItem(
-          "merchants",
-          {
-            id: record.description,
-            name: record.description,
-          },
-          ["name"]
-        );
-        addItem(
-          "categories",
-          {
-            id: record.categoryId,
-            name: record.categoryId,
-          },
-          ["name"]
-        );
-        addItem(
-          "records",
-          {
-            ...record,
-            id: Date.now().toString(),
-          },
-          ["date", "description", "amount"]
-        );
-      }
+      await addEntities(parsedRecords);
 
       toast.success(
         `Fichier traité avec succès : ${parsedRecords.length} enregistrements.`
@@ -115,7 +85,7 @@ const HTMLTangerineUploader: React.FC = () => {
       const dateStr =
         row.children[0].children[0].children[0].children[1]?.textContent // td // seul div // seul div // div avec la date
           ?.trim();
-      const date = dateStr ? formatDate(parseDate(dateStr)!) : "";
+      const date = parseDate(dateStr!);
 
       const category = row.children[1].children[1].children[1]?.textContent // td // div // div
         ?.trim();
@@ -130,19 +100,26 @@ const HTMLTangerineUploader: React.FC = () => {
         .replace(/\u00A0/g, " ")
         .replace(" ", "");
 
-      const amount = amountText ? parseFloat(amountText) : 0;
+      let amount = amountText ? parseFloat(amountText) : 0;
 
-      if (date && description && category && amount) {
+      if (user && date && description && category && amount) {
+        const categoryLower = category.toLowerCase();
+        // if categoryLower includes with any keyword
+        if (["revenu", "dépôt"].some((keyword) => categoryLower.includes(keyword))) {
+          amount = Math.abs(amount); // if it's a deposit, make it negative
+        } else {
+          amount = -Math.abs(amount); // if it's a withdrawal, make it positive
+        }
         const currentRecord = {
-          id: crypto.randomUUID(),
           date,
           description,
-          categoryId: category,
+          categoryName: category,
           amount,
           currency: "CAD",
           deductible: false,
-          bankId: "TANGERINE",
-        };
+          bankName: "TANGERINE",
+          userEmail: user.email, // Remplacez par l'ID de l'utilisateur actuel
+        } as Record;
         records.push(currentRecord);
       }
     }

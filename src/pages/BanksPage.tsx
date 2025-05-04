@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
@@ -6,23 +6,48 @@ import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
 
 const BanksPage: React.FC = () => {
-  const { data, addItem, updateItem, deleteItem } = useDataContext();
+  const { data, fetchData, addItem, updateItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBank, setEditingBank] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // État pour le chargement
+  const [hasFetched, setHasFetched] = useState(false); // État pour vérifier si les données ont été chargées
+  const totalItemsFetched = 1000;
 
-  const handleAdd = (newBank: any) => {
-    addItem("banks", { ...newBank, id: Date.now().toString() });
-    setIsModalOpen(false);
+  useEffect(() => {
+    if (!hasFetched) {
+      const fetchBanks = async () => {
+        setIsLoading(true); // Début du chargement
+        try {
+          await fetchData("banks", 1, totalItemsFetched);
+          setHasFetched(true); // Marquer les données comme chargées
+        } finally {
+          setIsLoading(false); // Fin du chargement
+        }
+      };
+
+      fetchBanks();
+    }
+  }, [hasFetched, fetchData, totalItemsFetched]);
+
+  const handleAdd = async (newBank: any) => {
+    setIsLoading(true); // Début du chargement
+    try {
+      await addItem("banks", { ...newBank });
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false); // Fin du chargement
+    }
   };
 
-  const handleUpdate = (updatedBank: any) => {
-    updateItem("banks", updatedBank);
-    setEditingBank(null);
-    setIsModalOpen(false);
-  };
-
-  const handleDelete = (id: string) => {
-    deleteItem("banks", id);
+  const handleUpdate = async (updatedBank: any) => {
+    setIsLoading(true); // Début du chargement
+    try {
+      await updateItem("banks", updatedBank);
+      setEditingBank(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false); // Fin du chargement
+    }
   };
 
   const openModalForAdd = () => {
@@ -37,6 +62,12 @@ const BanksPage: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="loader border-t-4 border-blue-500 rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Banks
@@ -51,15 +82,27 @@ const BanksPage: React.FC = () => {
       </div>
 
       <DataTable
-        data={data.banks}
+        data={data.banks} // Passez l'objet complet contenant items et pagination
         headers={[
-          // { key: "id", label: "ID" },
           { key: "name", label: "Name" },
+          {
+            key: "actions",
+            label: "Actions",
+            render: (bank: any) => (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => openModalForEdit(bank)}
+                  className="text-blue-600 dark:text-blue-400"
+                >
+                  Edit
+                </button>
+              </div>
+            ),
+          },
         ]}
         emptyMessage="No banks available."
       />
 
-      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

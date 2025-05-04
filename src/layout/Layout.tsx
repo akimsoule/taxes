@@ -3,9 +3,12 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "@workos-inc/authkit-react";
+import { useDataContext } from "../context/DataContext";
+import { User } from "../types/models";
 
 const Layout: React.FC = () => {
   const { user, signOut } = useAuth(); // Gestion de l'utilisateur et de la déconnexion
+  const {addItem} = useDataContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -19,6 +22,21 @@ const Layout: React.FC = () => {
     }
     return false;
   });
+
+  // update user in database
+  useEffect(() => {
+    if (user) {
+      const userData: User = {
+        id: user.id,
+        email: user.email,
+        name: user.firstName || user.lastName, // Ensure name is a string
+        picture: user.profilePictureUrl || "", // Ensure picture is a string
+        createdAt: new Date().toISOString(), // Add missing properties
+        updatedAt: new Date().toISOString(),
+      } as User;
+      addItem("users", userData, ["email"]);
+    }
+  }, [user]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);

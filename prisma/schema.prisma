@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String     @id @default(uuid())
+  email      String     @unique
+  name       String
+  picture    String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  activities Activity[]
+  records    Record[]
+  receipts   Receipt[]
+  images     Image[]
+  travels    Travel[]
+  docs       Doc[]
+}
+
+model Travel {
+  id          String   @id @default(uuid())
+  date        DateTime
+  distanceKm  Float
+  origin      String
+  destination String
+  notes       String?
+  userEmail   String
+  user        User     @relation(fields: [userEmail], references: [email])
+  activityId  String
+  activity    Activity @relation(fields: [activityId], references: [id])
+}
+
+model Bank {
+  id      String   @id @default(uuid())
+  name    String   @unique
+  records Record[]
+}
+
+model Category {
+  id      String   @id @default(uuid())
+  name    String   @unique
+  records Record[]
+}
+
+model Merchant {
+  id       String    @id @default(uuid())
+  name     String    @unique
+  receipts Receipt[]
+}
+
+model Activity {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  startDate DateTime
+  endDate   DateTime?
+  userEmail String
+  user      User      @relation(fields: [userEmail], references: [email])
+  records   Record[]
+  travels   Travel[]
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  date          DateTime
+  total         Float
+  currency      String
+  taxAmount     Float?
+  paymentMethod String?
+  userEmail     String
+  user          User     @relation(fields: [userEmail], references: [email])
+  merchantName  String
+  merchant      Merchant @relation(fields: [merchantName], references: [name])
+  recordId      String?  @unique
+  record        Record?  @relation("RecordToReceipt", fields: [recordId], references: [id])
+  imageId       String?  @unique
+  image         Image?   @relation("RecordToImage", fields: [imageId], references: [id])
+}
+
+model Record {
+  id               String    @id @default(uuid())
+  description      String
+  date             DateTime
+  amount           Float
+  currency         String
+  deductible       Boolean
+  deductibleAmount Float?
+  categoryName     String
+  category         Category  @relation(fields: [categoryName], references: [name])
+  activityName     String?
+  activity         Activity? @relation(fields: [activityName], references: [name])
+  receipt          Receipt?  @relation("RecordToReceipt")
+  cashBack         Float?
+  bankName         String
+  bank             Bank      @relation(fields: [bankName], references: [name])
+  userEmail        String
+  user             User      @relation(fields: [userEmail], references: [email])
+}
+
+model Image {
+  id         String   @id @default(uuid())
+  fileName   String
+  fileType   String
+  fileLink   String
+  ocrRawData String
+  uploadedAt DateTime @default(now())
+  userEmail  String
+  user       User     @relation(fields: [userEmail], references: [email])
+  page       Page?    @relation("PageToImage")
+  receipt    Receipt? @relation("RecordToImage")
+}
+
+model Page {
+  id         String   @id @default(uuid())
+  ocrRawData String?
+  uploadedAt DateTime @default(now())
+  docId      String
+  doc        Doc      @relation(fields: [docId], references: [id])
+  imageId    String?  @unique
+  image      Image?   @relation("PageToImage", fields: [imageId], references: [id])
+}
+
+model Doc {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime?
+  userEmail   String
+  user        User      @relation(fields: [userEmail], references: [email])
+  pages       Page[]
+}

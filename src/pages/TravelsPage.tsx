@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DataTable from "../components/DataTable";
 import CRUDForm from "../components/CRUDForm";
 import Modal from "../components/Modal";
@@ -6,23 +6,58 @@ import { useDataContext } from "../context/DataContext";
 import { Plus } from "lucide-react";
 
 const TravelsPage: React.FC = () => {
-  const { data, addItem, updateItem, deleteItem } = useDataContext();
+  const { data, fetchData, addItem, updateItem, deleteItem } = useDataContext();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTravel, setEditingTravel] = useState<any | null>(null);
+  const totalItemsFetched = 20;
+  const [isLoading, setIsLoading] = useState(false);
+   const [hasFetched, setHasFetched] = useState(false);
 
-  const handleAdd = (newTravel: any) => {
-    addItem("travels", { ...newTravel, id: Date.now().toString() });
-    setIsModalOpen(false);
+  useEffect(() => {
+    if (!hasFetched) {
+      const fetchTravels = async () => {
+        setIsLoading(true);
+        try {
+          await fetchData("travels", 1, totalItemsFetched);
+          setHasFetched(true);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchTravels();
+    }
+  }, [hasFetched, fetchData, totalItemsFetched]);
+
+
+  const handleAdd = async (newTravel: any) => {
+    setIsLoading(true);
+    try {
+      await addItem("travels", { ...newTravel });
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdate = (updatedTravel: any) => {
-    updateItem("travels", updatedTravel);
-    setEditingTravel(null);
-    setIsModalOpen(false);
+  const handleUpdate = async (updatedTravel: any) => {
+    setIsLoading(true);
+    try {
+      await updateItem("travels", updatedTravel);
+      setEditingTravel(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteItem("travels", id);
+  const handleDelete = async (id: string) => {
+    setIsLoading(true);
+    try {
+      await deleteItem("travels", id);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openModalForAdd = () => {
@@ -37,6 +72,12 @@ const TravelsPage: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+      {isLoading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="loader border-t-4 border-blue-500 rounded-full w-12 h-12 animate-spin"></div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Travels
@@ -53,7 +94,6 @@ const TravelsPage: React.FC = () => {
       <DataTable
         data={data.travels}
         headers={[
-          { key: "id", label: "ID" },
           { key: "date", label: "Date" },
           { key: "distanceKm", label: "Distance (km)" },
           { key: "origin", label: "Origin" },
@@ -85,7 +125,6 @@ const TravelsPage: React.FC = () => {
         emptyMessage="No travel records available."
       />
 
-      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -117,7 +156,7 @@ const TravelsPage: React.FC = () => {
               key: "activityId",
               label: "Activity",
               type: "select",
-              options: data.activities.map((activity: any) => ({
+              options: data.activities.items.map((activity: any) => ({
                 value: activity.id,
                 label: activity.name,
               })),

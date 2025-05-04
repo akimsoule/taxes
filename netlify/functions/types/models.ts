@@ -11,14 +11,17 @@ export interface Activity {
   name: string;
   startDate: string;
   endDate?: string;
-  userId: string;
+  userEmail: string;
 }
 
 export interface Category {
   id: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
+}
+
+export interface Merchant {
+  id: string;
+  name: string;
 }
 
 export interface Bank {
@@ -29,29 +32,39 @@ export interface Bank {
 export interface Record {
   id: string;
   description: string;
-  date: string;
+  date: Date;
   amount: number;
   currency: string;
   deductible: boolean;
   deductibleAmount?: number;
-  categoryId: string;
-  activityId: string;
-  receiptId?: string;
-  bankId: string;
+  categoryName: string;
+  activityName?: string;
+  cashBack?: number;
+  bankName: string;
+  userEmail: string;
+}
+
+export interface Image {
+  id: string;
+  base64: string;
+  fileName: string;
+  fileType: string;
+  ocrRawData: string;
+  uploadedAt: string;
+  userEmail: string;
 }
 
 export interface Receipt {
   id: string;
   date: string;
-  merchant: string;
   total: number;
   currency: string;
-  imageUrl?: string;
-  ocrRawData?: string;
   taxAmount?: number;
   paymentMethod?: string;
-  userId: string;
+  userEmail: string;
+  merchantName: string;
   recordId?: string;
+  imageId?: string;
 }
 
 export interface Travel {
@@ -61,17 +74,49 @@ export interface Travel {
   origin: string;
   destination: string;
   notes?: string;
-  userId: string;
-  activityId: string;
+  userEmail: string;
+  activityName: string;
 }
 
-export type DataType = 'records' | 'receipts' | 'travels' | 'activities' | 'categories' | 'banks';
+export interface Page {
+  id: string;
+  ocrRawData?: string;
+  uploadedAt: string;
+  docId: string;
+  imageId?: string;
+}
+
+export interface Doc {
+  id: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+  userEmail: string;
+  pages: Page[];
+}
+
+export type DataType =
+  | "users"
+  | "records"
+  | "receipts"
+  | "docs"
+  | "images"
+  | "travels"
+  | "activities"
+  | "categories"
+  | "merchants"
+  | "banks";
 
 export interface DataState {
+  users: User[];
   records: Record[];
   receipts: Receipt[];
+  docs: Doc[];
   travels: Travel[];
   activities: Activity[];
+  images: Image[];
   categories: Category[];
+  merchants: Merchant[];
   banks: Bank[];
 }

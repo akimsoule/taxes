@@ -11,7 +11,7 @@ export interface Activity {
   name: string;
   startDate: string;
   endDate?: string;
-  userId: string;
+  userEmail: string;
 }
 
 export interface Category {
@@ -32,37 +32,39 @@ export interface Bank {
 export interface Record {
   id: string;
   description: string;
-  date: string;
+  date: Date;
   amount: number;
   currency: string;
   deductible: boolean;
   deductibleAmount?: number;
-  categoryId: string;
-  activityId?: string;
-  receiptId?: string;
+  categoryName: string;
+  activityName?: string;
   cashBack?: number;
-  bankId: string;
+  bankName: string;
+  userEmail: string;
 }
 
-export interface ReceiptImage {
+export interface Image {
   id: string;
-  receiptId?: string; // Référence au reçu associé
-  imageUrl: string;
-  ocrRawData?: string; // Données OCR extraites de l'image
-  uploadedAt: string; // Date d'upload de l'image
+  base64: string;
+  fileName: string;
+  fileType: string;
+  ocrRawData: string;
+  uploadedAt: string;
+  userEmail: string;
 }
 
 export interface Receipt {
   id: string;
   date: string;
-  merchant: string;
   total: number;
   currency: string;
   taxAmount?: number;
   paymentMethod?: string;
-  userId: string;
+  userEmail: string;
+  merchantName: string;
   recordId?: string;
-  images?: ReceiptImage[]; // Liste des images associées au reçu
+  imageId?: string;
 }
 
 export interface Travel {
@@ -72,14 +74,34 @@ export interface Travel {
   origin: string;
   destination: string;
   notes?: string;
-  userId: string;
-  activityId: string;
+  userEmail: string;
+  activityName: string;
+}
+
+export interface Page {
+  id: string;
+  ocrRawData?: string;
+  uploadedAt: string;
+  docId: string;
+  imageId?: string;
+}
+
+export interface Doc {
+  id: string;
+  title: string;
+  description?: string;
+  createdAt: string;
+  updatedAt?: string;
+  userEmail: string;
+  pages: Page[];
 }
 
 export type DataType =
+  | "users"
   | "records"
   | "receipts"
-  | "receiptImages"
+  | "docs"
+  | "images"
   | "travels"
   | "activities"
   | "categories"
@@ -87,12 +109,94 @@ export type DataType =
   | "banks";
 
 export interface DataState {
-  records: Record[];
-  receipts: Receipt[];
-  travels: Travel[];
-  activities: Activity[];
-  receiptImages: ReceiptImage[]; // Ajout pour les images des reçus
-  categories: Category[];
-  merchants: Merchant[];
-  banks: Bank[];
+  users: {
+    items: User[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  records: {
+    items: Record[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  receipts: {
+    items: Receipt[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  docs: {
+    items: Doc[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  travels: {
+    items: Travel[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  activities: {
+    items: Activity[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  images: {
+    items: Image[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  categories: {
+    items: Category[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  merchants: {
+    items: Merchant[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
+  banks: {
+    items: Bank[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+  };
 }

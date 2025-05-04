@@ -13,7 +13,9 @@ import BanksPage from "./pages/BanksPage";
 import Layout from "./layout/Layout";
 import { AuthContent, AuthProvider } from "./auth/AuthProvider";
 import MerchantsPage from "./pages/MerchantsPage";
-import ReceiptImagesPage from "./pages/ReceiptImagesPage";
+import ImagesPage from "./pages/ImagesPage";
+import DocsPage from "./pages/DocsPage";
+import BookViewPage from "./pages/BookViewPage";
 
 function App() {
   return (
@@ -26,7 +28,9 @@ function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="records" element={<RecordsPage />} />
                 <Route path="receipts" element={<ReceiptsPage />} />
-                <Route path="receiptImages" element={<ReceiptImagesPage />} />
+                <Route path="docs" element={<DocsPage />} />
+                <Route path="/book-view/:docId" element={<BookViewPage />} />
+                <Route path="receiptImages" element={<ImagesPage />} />
                 <Route path="travels" element={<TravelsPage />} />
                 <Route path="activities" element={<ActivitiesPage />} />
                 <Route path="categories" element={<CategoriesPage />} />

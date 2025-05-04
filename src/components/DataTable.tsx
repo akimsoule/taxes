@@ -1,71 +1,57 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DataTableProps {
-  data: any[];
+  data: {
+    items: Record<string, any>[]; // Les données paginées
+    pagination: {
+      totalItems: number;
+      totalPages: number;
+    };
+  };
   headers: {
     key: string;
     label: string;
-    render?: (item: any) => React.ReactNode;
+    render?: (item: Record<string, any>) => React.ReactNode;
   }[];
-  itemsPerPage?: number;
   emptyMessage?: string;
-  defaultSortKey?: string; // New property for default sorting
 }
 
 const DataTable: React.FC<DataTableProps> = ({
   data,
   headers,
-  itemsPerPage = 10,
-  emptyMessage = "No data available. Please upload a CSV file.",
-  defaultSortKey = "date",
+  emptyMessage = "No data available.",
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortedData, setSortedData] = useState(data);
+  const [currentPage, setCurrentPage] = useState(1); // État pour la page actuelle
+  const [searchQuery, setSearchQuery] = useState(""); // État pour la recherche
 
-  // Sort data by default if a sort key is specified
-  useEffect(() => {
-    if (defaultSortKey) {
-      const sorted = [...data].sort((a, b) => {
-        const valueA = a[defaultSortKey];
-        const valueB = b[defaultSortKey];
+  const { items } = data;
+  const pageSize = 10; // Fixer le nombre d'éléments par page à 10
 
-        // Vérifiez si les valeurs sont des dates au format YYYY-MM-DD
-        const isDate = (val: any) =>
-          typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val);
+  // Trier les données par date (les plus récentes en premier)
+  const sortedItems = [...items].sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateB - dateA; // Les plus récents en premier
+  });
 
-        if (isDate(valueA) && isDate(valueB)) {
-          // Comparez les dates en les convertissant en objets Date
-          return new Date(valueB).getTime() - new Date(valueA).getTime();
-        }
-
-        // Comparaison standard pour les autres types
-        if (valueA < valueB) return -1;
-        if (valueA > valueB) return 1;
-        return 0;
-      });
-      setSortedData(sorted);
-    } else {
-      setSortedData(data);
-    }
-  }, [data, defaultSortKey]);
-
-  // Filter data based on search query
-  const filteredData = sortedData.filter((item) =>
+  // Filtrer les données en fonction de la recherche
+  const filteredItems = sortedItems.filter((item) =>
     headers.some((header) =>
-      String(item[header.key]).toLowerCase().includes(searchQuery.toLowerCase())
+      String(item[header.key] || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase())
     )
   );
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
-  const currentItems = filteredData.slice(startIndex, endIndex);
+  // Pagination des données filtrées
+  const paginatedItems = filteredItems.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const nextPage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < Math.ceil(filteredItems.length / pageSize)) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -76,8 +62,13 @@ const DataTable: React.FC<DataTableProps> = ({
     }
   };
 
-  const formatCellValue = (value: any): string => {
+  const formatCellValue = (value: any, key?: string): string => {
     if (value === undefined || value === null) return "—";
+    if (key === "date" || key === "uploadedAt") {
+      // Formater les dates au format YYYY-MM-DD
+      const date = new Date(value);
+      return !isNaN(date.getTime()) ? date.toISOString().split("T")[0] : "Invalid Date";
+    }
     if (typeof value === "boolean") return value ? "Yes" : "No";
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
@@ -85,21 +76,18 @@ const DataTable: React.FC<DataTableProps> = ({
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-      {/* Search Bar */}
+      {/* Champ de recherche */}
       <div className="p-4">
         <input
           type="text"
           placeholder="Search..."
           value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(1); // Reset to first page on search
-          }}
-          className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white"
         />
       </div>
 
-      {filteredData.length === 0 ? (
+      {paginatedItems.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-8 text-center">
           <p className="text-gray-500 dark:text-gray-400">{emptyMessage}</p>
         </div>
@@ -120,7 +108,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {currentItems.map((item, index) => (
+                {paginatedItems.map((item, index) => (
                   <tr
                     key={index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150"
@@ -132,7 +120,7 @@ const DataTable: React.FC<DataTableProps> = ({
                       >
                         {header.render
                           ? header.render(item)
-                          : formatCellValue(item[header.key])}
+                          : formatCellValue(item[header.key], header.key)}
                       </td>
                     ))}
                   </tr>
@@ -141,12 +129,18 @@ const DataTable: React.FC<DataTableProps> = ({
             </table>
           </div>
 
-          {totalPages > 1 && (
+          {Math.ceil(filteredItems.length / pageSize) > 1 && (
             <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 flex items-center justify-between">
               <div className="text-sm text-gray-700 dark:text-gray-300">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{" "}
-                <span className="font-medium">{endIndex}</span> of{" "}
-                <span className="font-medium">{filteredData.length}</span>{" "}
+                Showing{" "}
+                <span className="font-medium">
+                  {(currentPage - 1) * pageSize + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-medium">
+                  {Math.min(currentPage * pageSize, filteredItems.length)}
+                </span>{" "}
+                of <span className="font-medium">{filteredItems.length}</span>{" "}
                 results
               </div>
               <div className="flex items-center space-x-2">
@@ -162,13 +156,15 @@ const DataTable: React.FC<DataTableProps> = ({
                   <ChevronLeft className="h-5 w-5" />
                 </button>
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Page {currentPage} of {totalPages}
+                  Page {currentPage} of {Math.ceil(filteredItems.length / pageSize)}
                 </span>
                 <button
                   onClick={nextPage}
-                  disabled={currentPage === totalPages}
+                  disabled={
+                    currentPage === Math.ceil(filteredItems.length / pageSize)
+                  }
                   className={`p-2 rounded-md ${
-                    currentPage === totalPages
+                    currentPage === Math.ceil(filteredItems.length / pageSize)
                       ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   }`}
