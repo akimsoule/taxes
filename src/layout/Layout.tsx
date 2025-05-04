@@ -32,7 +32,7 @@ const Layout: React.FC = () => {
       }
     };
     checkLoginStatus();
-  }, []);
+  }, [signIn, user]);
 
 
 
