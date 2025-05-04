@@ -24,7 +24,7 @@ export function AuthContent({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
+ 
   if (!user) {
     return <LoginPage />;
   }

@@ -7,8 +7,8 @@ import { useDataContext } from "../context/DataContext";
 import { User } from "../types/models";
 
 const Layout: React.FC = () => {
-  const { user, signOut } = useAuth(); // Gestion de l'utilisateur et de la déconnexion
-  const {addItem} = useDataContext();
+  const { user, signIn, signOut } = useAuth(); // Gestion de l'utilisateur et de la déconnexion
+  const { addItem } = useDataContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -23,6 +23,19 @@ const Layout: React.FC = () => {
     return false;
   });
 
+  // Vérifie si l'utilisateur est connecté
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      const isLoggedIn = localStorage.getItem("isLoggedIn");
+      if (isLoggedIn === "true") {
+        await signIn();
+      }
+    };
+    checkLoginStatus();
+  }, []);
+
+  
+
   // update user in database
   useEffect(() => {
     if (user) {
@@ -34,7 +47,14 @@ const Layout: React.FC = () => {
         createdAt: new Date().toISOString(), // Add missing properties
         updatedAt: new Date().toISOString(),
       } as User;
+
       addItem("users", userData, ["email"]);
+
+      // Ajouter une variable dans le localStorage pour indiquer que l'utilisateur est connecté
+      localStorage.setItem("isLoggedIn", "true");
+    } else {
+      // Supprimer la variable si l'utilisateur n'est pas connecté
+      localStorage.removeItem("isLoggedIn");
     }
   }, [user]);
 
