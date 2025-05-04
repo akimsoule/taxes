@@ -1,5 +1,6 @@
 import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
 import LoginPage from "../pages/LoginPage";
+import { useEffect } from "react";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
@@ -10,9 +11,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function AuthContent({ children }: { children: React.ReactNode }) {
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, signIn } = useAuth();
 
-  console.log("AuthContent", { isLoading, user });
+  // Restaurer l'utilisateur après un rafraîchissement
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    if (isLoggedIn === "true" && !user) {
+      signIn(); // Tente de reconnecter l'utilisateur
+    }
+  }, [user, signIn]);
 
   if (isLoading) {
     return (
@@ -26,7 +33,7 @@ export function AuthContent({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
- 
+
   if (!user) {
     return <LoginPage />;
   }
