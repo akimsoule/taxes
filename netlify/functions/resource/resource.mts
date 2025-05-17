@@ -3,6 +3,7 @@ import { google } from "googleapis";
 import { JWT } from "google-auth-library";
 import { Context } from "@netlify/functions";
 import * as stream from "stream";
+import { authMiddleware } from "../authMiddleware";
 
 const prisma = new PrismaClient();
 
@@ -15,16 +16,37 @@ const auth = new JWT({
 
 const drive = google.drive({ version: "v3", auth });
 
-export default async (request: Request, context: Context) => {
+const validResourceTypes = [
+  "INVOICE",
+  "RECEIPT",
+  "TRAVEL",
+  "OTHER",
+  "BANK_STATEMENT",
+  "PAYSLIP",
+  "CONTRACT",
+  "IDENTITY_DOCUMENT",
+  "INSURANCE_POLICY",
+  "WARRANTY",
+  "CERTIFICATE",
+  "MEDICAL_RECORD",
+  "TAX_DOCUMENT",
+  "LEGAL_DOCUMENT",
+  "PROPERTY_DOCUMENT",
+  "VEHICLE_DOCUMENT",
+  "EDUCATIONAL_DOCUMENT",
+];
+
+const resourceApi = async (request: Request, context: Context & { userData?: any }) => {
   try {
     const url = new URL(request.url);
     const type = url.searchParams.get("type");
     const action = url.searchParams.get("action");
+    const userData = context.userData; // Récupérer les données utilisateur
 
-    if (type !== "images") {
+    if (type !== "resources") {
       return new Response(
         JSON.stringify({
-          error: "Invalid type. Only 'images' is supported for this action.",
+          error: "Invalid type. Only 'resources' is supported for this action.",
         }),
         { status: 400 }
       );
@@ -76,6 +98,11 @@ export default async (request: Request, context: Context) => {
           throw new Error("File data is not a valid buffer.");
         }
 
+        // Validation du type de resource
+        if (!validResourceTypes.includes(metadata.type)) {
+          metadata.type = "OTHER"; // Valeur par défaut
+        }
+
         const passThroughStream = new stream.PassThrough();
         passThroughStream.end(fileData);
 
@@ -85,7 +112,7 @@ export default async (request: Request, context: Context) => {
 
         const media = {
           mimeType: metadata.fileType || "application/octet-stream",
-          body: passThroughStream,
+          body: passThroughStream, // Utilisation du flux
         };
 
         try {
@@ -113,7 +140,7 @@ export default async (request: Request, context: Context) => {
 
           const fileLink = `https://drive.google.com/uc?id=${fileId}&export=download`;
 
-          const savedImage = await prisma.image.create({
+          const savedResource = await prisma.resource.create({
             data: {
               id: fileId,
               fileName: metadata.fileName || "unknown",
@@ -122,10 +149,12 @@ export default async (request: Request, context: Context) => {
               userEmail: metadata.userEmail || "unknown",
               ocrRawData: metadata.ocrRawData || "",
               fileLink,
+              type: metadata.type,
+              isArchived: metadata.isArchived || false, // Par défaut, non archivé
             },
           });
 
-          return new Response(JSON.stringify(savedImage), {
+          return new Response(JSON.stringify(savedResource), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -142,23 +171,27 @@ export default async (request: Request, context: Context) => {
         const id = url.searchParams.get("id");
         if (!id) {
           return new Response(
-            JSON.stringify({ error: "Missing id for getSingleImage" }),
+            JSON.stringify({ error: "Missing id for getSingleResource" }),
             { status: 400 }
           );
         }
 
         try {
-          const image = await prisma.image.findUnique({
-            where: { id },
+          const resource = await prisma.resource.findFirst({
+            where: {
+              id,
+              userEmail: userData.email, // Filtrer par userEmail
+            },
           });
 
-          if (!image) {
-            return new Response(JSON.stringify({ error: "Image not found" }), {
-              status: 404,
-            });
+          if (!resource) {
+            return new Response(
+              JSON.stringify({ error: "Resource not found" }),
+              { status: 404 }
+            );
           }
 
-          return new Response(JSON.stringify(image), {
+          return new Response(JSON.stringify(resource), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
@@ -183,17 +216,24 @@ export default async (request: Request, context: Context) => {
         const skip = (page - 1) * pageSize;
 
         try {
-          const images = await prisma.image.findMany({
+          const resources = await prisma.resource.findMany({
             skip,
             take: pageSize,
+            where: {
+              userEmail: userData.email, // Filtrer par userEmail
+            },
           });
 
-          const totalItems = await prisma.image.count();
+          const totalItems = await prisma.resource.count({
+            where: {
+              userEmail: userData.email, // Filtrer par userEmail
+            },
+          });
           const totalPages = Math.ceil(totalItems / pageSize);
 
           return new Response(
             JSON.stringify({
-              items: images,
+              items: resources,
               pagination: {
                 page,
                 pageSize,
@@ -210,6 +250,65 @@ export default async (request: Request, context: Context) => {
         }
       }
 
+      case "update": {
+        if (request.method !== "PUT") {
+          return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+            status: 405,
+          });
+        }
+
+        const id = url.searchParams.get("id");
+        if (!id) {
+          return new Response(
+            JSON.stringify({ error: "Missing id for updateResource" }),
+            { status: 400 }
+          );
+        }
+
+        try {
+          // Vérifier que la ressource appartient à l'utilisateur
+          const resource = await prisma.resource.findFirst({
+            where: {
+              id,
+              userEmail: userData.email, // Filtrer par userEmail
+            },
+          });
+
+          if (!resource) {
+            return new Response(
+              JSON.stringify({ error: "Resource not found or unauthorized" }),
+              { status: 404 }
+            );
+          }
+
+          // Lire le corps de la requête pour obtenir les données à mettre à jour
+          const body = await request.json();
+
+          // Mettre à jour la ressource dans la base de données
+          const updatedResource = await prisma.resource.update({
+            where: { id },
+            data: {
+              fileName: body.fileName || resource.fileName,
+              fileType: body.fileType || resource.fileType,
+              ocrRawData: body.ocrRawData || resource.ocrRawData,
+              type: body.type || resource.type,
+              isArchived: body.isArchived !== undefined ? body.isArchived : resource.isArchived,
+            },
+          });
+
+          return new Response(JSON.stringify(updatedResource), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          console.error("Error updating resource:", error);
+          return new Response(
+            JSON.stringify({ error: "Failed to update resource" }),
+            { status: 500 }
+          );
+        }
+      }
+
       case "delete": {
         if (request.method !== "DELETE") {
           return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
@@ -220,28 +319,92 @@ export default async (request: Request, context: Context) => {
         const id = url.searchParams.get("id");
         if (!id) {
           return new Response(
-            JSON.stringify({ error: "Missing id for deleteImage" }),
+            JSON.stringify({ error: "Missing id for deleteResource" }),
             { status: 400 }
           );
         }
 
         try {
-          // Supprimer l'image de Google Drive
+          // Vérifier que la ressource appartient à l'utilisateur
+          const resource = await prisma.resource.findFirst({
+            where: {
+              id,
+              userEmail: userData.email, // Filtrer par userEmail
+            },
+          });
+
+          if (!resource) {
+            return new Response(
+              JSON.stringify({ error: "Resource not found or unauthorized" }),
+              { status: 404 }
+            );
+          }
+
+          // Supprimer la ressource de Google Drive
           await drive.files.delete({ fileId: id });
 
-          // Supprimer l'image de la base de données
-          await prisma.image.delete({
+          // Supprimer la ressource de la base de données
+          await prisma.resource.delete({
             where: { id },
           });
 
           return new Response(
-            JSON.stringify({ message: "Image deleted successfully" }),
+            JSON.stringify({ message: "Resource deleted successfully" }),
             { status: 200 }
           );
         } catch (error) {
-          console.error("Error deleting image:", error);
+          console.error("Error deleting resource:", error);
           return new Response(
-            JSON.stringify({ error: "Failed to delete image" }),
+            JSON.stringify({ error: "Failed to delete resource" }),
+            { status: 500 }
+          );
+        }
+      }
+
+      case "archive": {
+        if (request.method !== "PATCH") {
+          return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
+            status: 405,
+          });
+        }
+
+        const id = url.searchParams.get("id");
+        if (!id) {
+          return new Response(
+            JSON.stringify({ error: "Missing id for archiveResource" }),
+            { status: 400 }
+          );
+        }
+
+        try {
+          // Vérifier que la ressource appartient à l'utilisateur
+          const resource = await prisma.resource.findFirst({
+            where: {
+              id,
+              userEmail: userData.email, // Filtrer par userEmail
+            },
+          });
+
+          if (!resource) {
+            return new Response(
+              JSON.stringify({ error: "Resource not found or unauthorized" }),
+              { status: 404 }
+            );
+          }
+
+          const updatedResource = await prisma.resource.update({
+            where: { id },
+            data: { isArchived: true },
+          });
+
+          return new Response(JSON.stringify(updatedResource), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          console.error("Error archiving resource:", error);
+          return new Response(
+            JSON.stringify({ error: "Failed to archive resource" }),
             { status: 500 }
           );
         }
@@ -254,7 +417,7 @@ export default async (request: Request, context: Context) => {
         );
     }
   } catch (error) {
-    console.error("Error in image function:", error);
+    console.error("Error in resource function:", error);
     return new Response(JSON.stringify({ error: error.toString() }), {
       status: 500,
     });
@@ -288,3 +451,5 @@ function parseMultipartFormData(buffer: Buffer, boundary: string) {
 
   return parts;
 }
+
+export default authMiddleware(resourceApi);

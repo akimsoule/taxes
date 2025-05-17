@@ -1,38 +1,32 @@
-export interface User {
-  id: string;
+// Payloads (pour les requêtes)
+export interface UserPayload {
   email: string;
-  name?: string;
-  createdAt: string;
-  updatedAt: string;
+  name: string;
+  picture?: string;
 }
 
-export interface Activity {
-  id: string;
+export interface ActivityPayload {
   name: string;
   startDate: string;
   endDate?: string;
   userEmail: string;
 }
 
-export interface Category {
-  id: string;
+export interface CategoryPayload {
   name: string;
 }
 
-export interface Merchant {
-  id: string;
+export interface MerchantPayload {
   name: string;
 }
 
-export interface Bank {
-  id: string;
+export interface BankPayload {
   name: string;
 }
 
-export interface Record {
-  id: string;
+export interface RecordPayload {
   description: string;
-  date: Date;
+  date: string;
   amount: number;
   currency: string;
   deductible: boolean;
@@ -42,20 +36,10 @@ export interface Record {
   cashBack?: number;
   bankName: string;
   userEmail: string;
+  resourceId?: string;
 }
 
-export interface Image {
-  id: string;
-  base64: string;
-  fileName: string;
-  fileType: string;
-  ocrRawData: string;
-  uploadedAt: string;
-  userEmail: string;
-}
-
-export interface Receipt {
-  id: string;
+export interface ReceiptPayload {
   date: string;
   total: number;
   currency: string;
@@ -64,10 +48,113 @@ export interface Receipt {
   userEmail: string;
   merchantName: string;
   recordId?: string;
-  imageId?: string;
 }
 
-export interface Travel {
+export interface TravelPayload {
+  date: string;
+  distanceKm: number;
+  origin: string;
+  destination: string;
+  notes?: string;
+  userEmail: string;
+  activityId: string;
+  resourceId?: string;
+}
+
+export interface ResourcePayload {
+  type: ResourceType;
+  fileName?: string;
+  fileType?: string;
+  fileLink?: string;
+  ocrRawData?: string;
+  description?: string;
+  userEmail: string;
+  parentId?: string;
+  isArchived: boolean;
+}
+
+// Responses (pour les réponses)
+export interface UserResponse {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  createdAt: string;
+  updatedAt: string;
+  activities: ActivityResponse[];
+  records: RecordResponse[];
+  receipts: ReceiptResponse[];
+  travels: TravelResponse[];
+  resources: ResourceResponse[];
+}
+
+export interface ActivityResponse {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate?: string;
+  userEmail: string;
+  user: UserResponse;
+  records: RecordResponse[];
+  travels: TravelResponse[];
+}
+
+export interface CategoryResponse {
+  id: string;
+  name: string;
+  records: RecordResponse[];
+}
+
+export interface MerchantResponse {
+  id: string;
+  name: string;
+  receipts: ReceiptResponse[];
+}
+
+export interface BankResponse {
+  id: string;
+  name: string;
+  records: RecordResponse[];
+}
+
+export interface RecordResponse {
+  id: string;
+  description: string;
+  date: string;
+  amount: number;
+  currency: string;
+  deductible: boolean;
+  deductibleAmount?: number;
+  categoryName: string;
+  category: CategoryResponse;
+  activityName?: string;
+  activity?: ActivityResponse;
+  receipt?: ReceiptResponse;
+  cashBack?: number;
+  bankName: string;
+  bank: BankResponse;
+  userEmail: string;
+  user: UserResponse;
+  resourceId?: string;
+  resource?: ResourceResponse;
+}
+
+export interface ReceiptResponse {
+  id: string;
+  date: string;
+  total: number;
+  currency: string;
+  taxAmount?: number;
+  paymentMethod?: string;
+  userEmail: string;
+  user: UserResponse;
+  merchantName: string;
+  merchant: MerchantResponse;
+  recordId?: string;
+  record?: RecordResponse;
+}
+
+export interface TravelResponse {
   id: string;
   date: string;
   distanceKm: number;
@@ -75,42 +162,67 @@ export interface Travel {
   destination: string;
   notes?: string;
   userEmail: string;
-  activityName: string;
+  user: UserResponse;
+  activityId: string;
+  activity: ActivityResponse;
+  resourceId?: string;
+  resource?: ResourceResponse;
 }
 
-export interface Page {
+export interface ResourceResponse {
   id: string;
+  type: ResourceType;
+  fileName?: string;
+  fileType?: string;
+  fileLink?: string;
   ocrRawData?: string;
   uploadedAt: string;
-  docId: string;
-  imageId?: string;
-}
-
-export interface Doc {
-  id: string;
-  title: string;
   description?: string;
-  createdAt: string;
-  updatedAt?: string;
   userEmail: string;
-  pages: Page[];
+  user: UserResponse;
+  parentId?: string;
+  parent?: ResourceResponse;
+  children: ResourceResponse[];
+  record?: RecordResponse;
+  travel?: TravelResponse;
+  isArchived: boolean;
 }
 
+// Enum pour les types de ressources
+export enum ResourceType {
+  INVOICE = "INVOICE",
+  RECEIPT = "RECEIPT",
+  TRAVEL = "TRAVEL",
+  OTHER = "OTHER",
+  BANK_STATEMENT = "BANK_STATEMENT",
+  PAYSLIP = "PAYSLIP",
+  CONTRACT = "CONTRACT",
+  IDENTITY_DOCUMENT = "IDENTITY_DOCUMENT",
+  INSURANCE_POLICY = "INSURANCE_POLICY",
+  WARRANTY = "WARRANTY",
+  CERTIFICATE = "CERTIFICATE",
+  MEDICAL_RECORD = "MEDICAL_RECORD",
+  TAX_DOCUMENT = "TAX_DOCUMENT",
+  LEGAL_DOCUMENT = "LEGAL_DOCUMENT",
+  PROPERTY_DOCUMENT = "PROPERTY_DOCUMENT",
+  VEHICLE_DOCUMENT = "VEHICLE_DOCUMENT",
+  EDUCATIONAL_DOCUMENT = "EDUCATIONAL_DOCUMENT",
+}
+
+// DataType et DataState (inchangés)
 export type DataType =
   | "users"
   | "records"
-  | "receipts"
-  | "docs"
-  | "images"
   | "travels"
   | "activities"
   | "categories"
   | "merchants"
-  | "banks";
+  | "banks"
+  | "resources";
 
 export interface DataState {
   users: {
-    items: User[];
+    items: UserResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -119,25 +231,7 @@ export interface DataState {
     };
   };
   records: {
-    items: Record[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalItems: number;
-      totalPages: number;
-    };
-  };
-  receipts: {
-    items: Receipt[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalItems: number;
-      totalPages: number;
-    };
-  };
-  docs: {
-    items: Doc[];
+    items: RecordResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -146,7 +240,7 @@ export interface DataState {
     };
   };
   travels: {
-    items: Travel[];
+    items: TravelResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -155,7 +249,7 @@ export interface DataState {
     };
   };
   activities: {
-    items: Activity[];
+    items: ActivityResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -163,8 +257,8 @@ export interface DataState {
       totalPages: number;
     };
   };
-  images: {
-    items: Image[];
+  resources: {
+    items: ResourceResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -173,7 +267,7 @@ export interface DataState {
     };
   };
   categories: {
-    items: Category[];
+    items: CategoryResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -182,7 +276,7 @@ export interface DataState {
     };
   };
   merchants: {
-    items: Merchant[];
+    items: MerchantResponse[];
     pagination: {
       page: number;
       pageSize: number;
@@ -191,7 +285,7 @@ export interface DataState {
     };
   };
   banks: {
-    items: Bank[];
+    items: BankResponse[];
     pagination: {
       page: number;
       pageSize: number;

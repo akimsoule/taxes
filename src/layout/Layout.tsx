@@ -4,12 +4,13 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "@workos-inc/authkit-react";
 import { useDataContext } from "../context/DataContext";
-import { User } from "../types/models";
+import { UserPayload } from "../types/models";
 
 const Layout: React.FC = () => {
   const { user, signIn, signOut } = useAuth(); // Gestion de l'utilisateur et de la déconnexion
   const { addItem } = useDataContext();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userData, setUserData] = useState<UserPayload | null>(null);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       // Vérifie d'abord le localStorage
@@ -28,7 +29,11 @@ const Layout: React.FC = () => {
     const checkLoginStatus = async () => {
       const isLoggedIn = localStorage.getItem("isLoggedIn");
       if (isLoggedIn === "true" && !user) {
-        await signIn();
+        try {
+          await signIn();
+        } catch (error) {
+          console.error("Error during sign-in:", error);
+        }
       }
     };
     checkLoginStatus();
@@ -37,19 +42,33 @@ const Layout: React.FC = () => {
   // update user in database
   useEffect(() => {
     if (user) {
-      const userData: User = {
-        id: user.id,
+      const userData: UserPayload = {
         email: user.email,
-        name: user.firstName || user.lastName, // Ensure name is a string
+        name: user.firstName || user.lastName || "", // Ensure name is a string
         picture: user.profilePictureUrl || "", // Ensure picture is a string
-        createdAt: new Date().toISOString(), // Add missing properties
-        updatedAt: new Date().toISOString(),
-      } as User;
+      };
 
-      addItem("users", userData, ["email"]);
+      // Vérifier si l'utilisateur a déjà été ajouté dans le localStorage
+      const userAdded = localStorage.getItem(`userAdded`);
+      if (!userAdded) {
+        // Ajouter l'utilisateur dans la base de données
+        addItem("users", userData, ["email"])
+          .then(() => {
+            // Marquer l'utilisateur comme ajouté dans le localStorage
+            localStorage.setItem(`userAdded`, "true");
+          })
+          .catch((error) => {
+            console.error("Error adding user:", error);
+          });
+      }
 
       // Ajouter une variable dans le localStorage pour indiquer que l'utilisateur est connecté
       localStorage.setItem("isLoggedIn", "true");
+      setUserData({
+        email: user.email,
+        name: user.firstName || user.lastName || "",
+        picture: user.profilePictureUrl || "",
+      });
     } else {
       // Supprimer la variable si l'utilisateur n'est pas connecté
       localStorage.removeItem("isLoggedIn");
@@ -94,6 +113,7 @@ const Layout: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userAdded");
     signOut({ returnTo: window.location.origin });
   };
 
@@ -101,14 +121,18 @@ const Layout: React.FC = () => {
     <div
       className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300`}
     >
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} user={user} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        toggleSidebar={toggleSidebar}
+        user={userData}
+      />
 
       <div className="flex flex-col min-h-screen md:ml-64">
         <Header
           toggleSidebar={toggleSidebar}
           darkMode={darkMode}
           toggleDarkMode={toggleDarkMode}
-          user={user}
+          user={userData}
           onLogout={handleLogout} // Utilisation de `signOut` directement
         />
 

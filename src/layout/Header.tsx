@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Menu, Sun, Moon, LogOut, User as UserIcon } from "lucide-react";
-import { User } from "../types/models";
+import { UserPayload } from "../types/models";
 
 type HeaderProps = {
   toggleSidebar: () => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
-  user: User | null;
+  user: UserPayload | null;
   onLogout: () => void;
 };
 

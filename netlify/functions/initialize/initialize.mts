@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { Context } from "@netlify/functions";
+import { authMiddleware } from "../authMiddleware"; // Import du middleware
 
 const prisma = new PrismaClient();
 
@@ -10,7 +11,10 @@ const initialBanks = [
   { id: "DESJARDINS", name: "DESJARDINS" },
 ];
 
-export default async (request: Request, context: Context) => {
+const initializeHandler = async (
+  request: Request,
+  context: Context
+): Promise<Response> => {
   try {
     console.log("Initialisation de la base de données...");
 
@@ -25,6 +29,12 @@ export default async (request: Request, context: Context) => {
         },
       });
     }
+
+    // return {
+    //   statusCode: 200,
+    //   body: JSON.stringify({ message: "Base de données initialisée avec succès" }),
+    //   headers: { "Content-Type": "application/json" },
+    // }
 
     return new Response(
       JSON.stringify({ message: "Base de données initialisée avec succès" }),
@@ -45,7 +55,18 @@ export default async (request: Request, context: Context) => {
         headers: { "Content-Type": "application/json" },
       }
     );
+    // return {
+    //   statusCode: 500,
+    //   body: JSON.stringify({
+    //     error: "Échec de l'initialisation de la base de données",
+    //     details: error.message,
+    //   }),
+    //   headers: { "Content-Type": "application/json" },
+    // }
   } finally {
     await prisma.$disconnect();
   }
 };
+
+// Envelopper le handler avec authMiddleware
+export default authMiddleware(initializeHandler);

@@ -1,11 +1,12 @@
 import React, { useRef } from "react";
 import toast from "react-hot-toast";
-import { Record } from "../types/models";
-import { addEntities } from "../utils";
+import { RecordPayload } from "../types/models";
 import { useAuth } from "@workos-inc/authkit-react";
+import { useService } from "../services/ServiceContext";
 
 const HTMLRBCUploader: React.FC = () => {
   const { user } = useAuth();
+  const dataService = useService();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseDate = (dateString: string): Date | null => {
@@ -61,7 +62,7 @@ const HTMLRBCUploader: React.FC = () => {
         return;
       }
 
-      await addEntities(parsedRecords);
+      await dataService.addEntities(parsedRecords);
 
       toast.success(
         `Fichier traité avec succès : ${parsedRecords.length} enregistrements.`
@@ -73,12 +74,12 @@ const HTMLRBCUploader: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const parseHTML = (htmlContent: string): Record[] => {
+  const parseHTML = (htmlContent: string): RecordPayload[] => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
 
     const rows = doc.querySelectorAll(".rbc-transaction-list-transaction-new");
-    const records: Record[] = [];
+    const records: RecordPayload[] = [];
 
     for (const row of rows) {
       const dateStr = row.querySelector("td[id^='row-']")?.textContent?.trim();
@@ -101,13 +102,15 @@ const HTMLRBCUploader: React.FC = () => {
       if (user && date && description && amount) {
         const categoryLower = category.toLowerCase();
         // if categoryLower includes with any keyword
-        if (["revenu", "dépôt"].some((keyword) => categoryLower.includes(keyword))) {
+        if (
+          ["revenu", "dépôt"].some((keyword) => categoryLower.includes(keyword))
+        ) {
           amount = Math.abs(amount); // if it's a deposit, make it negative
         } else {
           amount = -Math.abs(amount); // if it's a withdrawal, make it positive
         }
         const currentRecord = {
-          date,
+          date: date.toISOString(), // Convert Date to string
           description,
           categoryName: category,
           amount,
@@ -115,7 +118,7 @@ const HTMLRBCUploader: React.FC = () => {
           deductible: false,
           bankName: "RBC",
           userEmail: user.email, // Remplacez par l'ID de l'utilisateur actuel
-        } as Record;
+        } as RecordPayload;
         records.push(currentRecord);
       }
     }
