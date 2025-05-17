@@ -19,42 +19,6 @@ export const initialDataState: DataState = {
       totalPages: 0,
     },
   },
-  receipts: {
-    items: [],
-    pagination: {
-      page: 0,
-      pageSize: 0,
-      totalItems: 0,
-      totalPages: 0,
-    },
-  },
-  docs: {
-    items: [],
-    pagination: {
-      page: 0,
-      pageSize: 0,
-      totalItems: 0,
-      totalPages: 0,
-    },
-  },
-  files: {
-    items: [],
-    pagination: {
-      page: 0,
-      pageSize: 0,
-      totalItems: 0,
-      totalPages: 0,
-    },
-  },
-  images: {
-    items: [],
-    pagination: {
-      page: 0,
-      pageSize: 0,
-      totalItems: 0,
-      totalPages: 0,
-    },
-  },
   travels: {
     items: [],
     pagination: {
@@ -92,16 +56,21 @@ export const initialDataState: DataState = {
     },
   },
   banks: {
-    items: [
-      { id: "TANGERINE", name: "TANGERINE" },
-      { id: "DESJARDINS", name: "DESJARDINS" },
-      { id: "RBC", name: "RBC" },
-    ],
+    items: [],
     pagination: {
-      page: 1,
-      pageSize: 3,
-      totalItems: 3,
-      totalPages: 1,
+      page: 0,
+      pageSize: 0,
+      totalItems: 0,
+      totalPages: 0,
+    },
+  },
+  resources: {
+    items: [],
+    pagination: {
+      page: 0,
+      pageSize: 0,
+      totalItems: 0,
+      totalPages: 0,
     },
   },
 };

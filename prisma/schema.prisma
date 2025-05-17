@@ -8,6 +8,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator erd {
+  provider = "prisma-erd-generator"
+  output   = "./erd/diagram.svg" // Chemin avec une extension valide
+  format   = "svg" // Format du diagramme
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -23,22 +29,25 @@ model User {
   activities Activity[]
   records    Record[]
   receipts   Receipt[]
-  images     Image[]
   travels    Travel[]
-  docs       Doc[]
+  resources  Resource[]
 }
 
 model Travel {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   date        DateTime
   distanceKm  Float
   origin      String
   destination String
   notes       String?
   userEmail   String
-  user        User     @relation(fields: [userEmail], references: [email])
+  user        User      @relation(fields: [userEmail], references: [email])
   activityId  String
-  activity    Activity @relation(fields: [activityId], references: [id])
+  activity    Activity  @relation(fields: [activityId], references: [id])
+  resourceId  String?
+  resource    Resource? @relation("TravelToResource", fields: [resourceId], references: [id])
+
+  @@unique([resourceId])
 }
 
 model Bank {
@@ -83,8 +92,6 @@ model Receipt {
   merchant      Merchant @relation(fields: [merchantName], references: [name])
   recordId      String?  @unique
   record        Record?  @relation("RecordToReceipt", fields: [recordId], references: [id])
-  imageId       String?  @unique
-  image         Image?   @relation("RecordToImage", fields: [imageId], references: [id])
 }
 
 model Record {
@@ -105,38 +112,45 @@ model Record {
   bank             Bank      @relation(fields: [bankName], references: [name])
   userEmail        String
   user             User      @relation(fields: [userEmail], references: [email])
+  resourceId       String?   @unique
+  resource         Resource? @relation("RecordToResource", fields: [resourceId], references: [id])
 }
 
-model Image {
-  id         String   @id @default(uuid())
-  fileName   String
-  fileType   String
-  fileLink   String
-  ocrRawData String
-  uploadedAt DateTime @default(now())
-  userEmail  String
-  user       User     @relation(fields: [userEmail], references: [email])
-  page       Page?    @relation("PageToImage")
-  receipt    Receipt? @relation("RecordToImage")
+enum ResourceType {
+  INVOICE
+  RECEIPT
+  TRAVEL
+  OTHER
+  BANK_STATEMENT
+  PAYSLIP
+  CONTRACT
+  IDENTITY_DOCUMENT
+  INSURANCE_POLICY
+  WARRANTY
+  CERTIFICATE
+  MEDICAL_RECORD
+  TAX_DOCUMENT
+  LEGAL_DOCUMENT
+  PROPERTY_DOCUMENT
+  VEHICLE_DOCUMENT
+  EDUCATIONAL_DOCUMENT
 }
 
-model Page {
-  id         String   @id @default(uuid())
-  ocrRawData String?
-  uploadedAt DateTime @default(now())
-  docId      String
-  doc        Doc      @relation(fields: [docId], references: [id])
-  imageId    String?  @unique
-  image      Image?   @relation("PageToImage", fields: [imageId], references: [id])
-}
-
-model Doc {
-  id          String    @id @default(uuid())
-  title       String
+model Resource {
+  id          String       @id @default(uuid())
+  type        ResourceType
+  fileName    String?
+  fileType    String?
+  fileLink    String?
+  ocrRawData  String?
+  uploadedAt  DateTime     @default(now())
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime?
   userEmail   String
-  user        User      @relation(fields: [userEmail], references: [email])
-  pages       Page[]
+  user        User         @relation(fields: [userEmail], references: [email])
+  parentId    String?
+  parent      Resource?    @relation("ParentToChild", fields: [parentId], references: [id])
+  children    Resource[]   @relation("ParentToChild")
+  record      Record?      @relation("RecordToResource")
+  travel      Travel?      @relation("TravelToResource")
+  isArchived  Boolean      @default(false)
 }

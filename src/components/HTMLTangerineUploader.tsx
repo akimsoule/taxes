@@ -1,11 +1,12 @@
 import React, { useRef } from "react";
 import toast from "react-hot-toast";
-import { Record } from "../types/models";
+import { RecordPayload } from "../types/models";
 import { useAuth } from "@workos-inc/authkit-react";
-import { addEntities } from "../utils";
+import { useService } from "../services/ServiceContext";
 
 const HTMLTangerineUploader: React.FC = () => {
   const { user } = useAuth();
+  const dataService = useService();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseDate = (dateString: string): Date | null => {
@@ -62,7 +63,7 @@ const HTMLTangerineUploader: React.FC = () => {
         return;
       }
 
-      await addEntities(parsedRecords);
+      await dataService.addEntities(parsedRecords);
 
       toast.success(
         `Fichier traité avec succès : ${parsedRecords.length} enregistrements.`
@@ -74,12 +75,12 @@ const HTMLTangerineUploader: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const parseHTML = (htmlContent: string): Record[] => {
+  const parseHTML = (htmlContent: string): RecordPayload[] => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
 
     const rows = doc.querySelectorAll(".c-posted-transactions-list-items");
-    const records: Record[] = [];
+    const records: RecordPayload[] = [];
 
     for (const row of rows) {
       const dateStr =
@@ -111,7 +112,7 @@ const HTMLTangerineUploader: React.FC = () => {
           amount = -Math.abs(amount); // if it's a withdrawal, make it positive
         }
         const currentRecord = {
-          date,
+          date: date.toISOString(),
           description,
           categoryName: category,
           amount,
@@ -119,7 +120,7 @@ const HTMLTangerineUploader: React.FC = () => {
           deductible: false,
           bankName: "TANGERINE",
           userEmail: user.email, // Remplacez par l'ID de l'utilisateur actuel
-        } as Record;
+        } as RecordPayload;
         records.push(currentRecord);
       }
     }

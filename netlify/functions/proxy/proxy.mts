@@ -1,34 +1,48 @@
-import fetch from "node-fetch";
+import { Context } from "@netlify/functions";
 
-export async function handler(event: any) {
-  const fileUrl = event.queryStringParameters.url;
+export default async (
+  request: Request,
+  context: Context
+): Promise<Response> => {
+  const { searchParams } = new URL(request.url);
+  const fileUrl = searchParams.get("url");
 
   if (!fileUrl) {
-    return {
-      statusCode: 400,
-      body: "Missing 'url' query parameter.",
-    };
+    return new Response("Missing 'url' query parameter.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   try {
-    const response = await fetch(fileUrl, {});
-    const buffer = await response.buffer();
+    const response = await fetch(fileUrl);
 
+    if (!response.ok || !response.body) {
+      throw new Error("Failed to fetch file.");
+    }
 
-    return {
-      statusCode: 200,
+    return new Response(response.body, {
+      status: 200,
       headers: {
-        "Content-Type": response.headers.get("content-type") || "application/octet-stream",
-        "Access-Control-Allow-Origin": "*", // Permettre les requêtes cross-origin
+        // Type MIME du fichier (pdf, image, vidéo, etc.)
+        "Content-Type":
+          response.headers.get("Content-Type") || "application/octet-stream",
+
+        // ⚠️ Ceci empêche le navigateur de le télécharger
+        "Content-Disposition": "inline",
+
+        // Autorise l'affichage cross-origin dans un iframe
+        "Access-Control-Allow-Origin": "*",
+
+        // Facile à ajouter, mais optionnel ici
+        "Cache-Control": "public, max-age=3600",
       },
-      body: buffer.toString("base64"),
-      isBase64Encoded: true,
-    };
+    });
   } catch (error) {
-    console.error("Error fetching file:", error);
-    return {
-      statusCode: 500,
-      body: "Failed to fetch file.",
-    };
+    console.error("Proxy fetch error:", error);
+    return new Response("Failed to fetch file.", {
+      status: 500,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
-}
+};

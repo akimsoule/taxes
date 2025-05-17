@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "ResourceType" AS ENUM ('INVOICE', 'RECEIPT', 'TRAVEL', 'OTHER', 'BANK_STATEMENT', 'PAYSLIP', 'CONTRACT', 'IDENTITY_DOCUMENT', 'INSURANCE_POLICY', 'WARRANTY', 'CERTIFICATE', 'MEDICAL_RECORD', 'TAX_DOCUMENT', 'LEGAL_DOCUMENT', 'PROPERTY_DOCUMENT', 'VEHICLE_DOCUMENT', 'EDUCATIONAL_DOCUMENT');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -20,6 +23,7 @@ CREATE TABLE "Travel" (
     "notes" TEXT,
     "userEmail" TEXT NOT NULL,
     "activityId" TEXT NOT NULL,
+    "resourceId" TEXT,
 
     CONSTRAINT "Travel_pkey" PRIMARY KEY ("id")
 );
@@ -70,7 +74,6 @@ CREATE TABLE "Receipt" (
     "userEmail" TEXT NOT NULL,
     "merchantName" TEXT NOT NULL,
     "recordId" TEXT,
-    "imageId" TEXT,
 
     CONSTRAINT "Receipt_pkey" PRIMARY KEY ("id")
 );
@@ -89,48 +92,33 @@ CREATE TABLE "Record" (
     "cashBack" DOUBLE PRECISION,
     "bankName" TEXT NOT NULL,
     "userEmail" TEXT NOT NULL,
+    "resourceId" TEXT,
 
     CONSTRAINT "Record_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Image" (
+CREATE TABLE "Resource" (
     "id" TEXT NOT NULL,
-    "fileName" TEXT NOT NULL,
-    "fileType" TEXT NOT NULL,
-    "fileLink" TEXT NOT NULL,
-    "ocrRawData" TEXT NOT NULL,
-    "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userEmail" TEXT NOT NULL,
-
-    CONSTRAINT "Image_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Page" (
-    "id" TEXT NOT NULL,
+    "type" "ResourceType" NOT NULL,
+    "fileName" TEXT,
+    "fileType" TEXT,
+    "fileLink" TEXT,
     "ocrRawData" TEXT,
     "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "docId" TEXT NOT NULL,
-    "imageId" TEXT,
-
-    CONSTRAINT "Page_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Doc" (
-    "id" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
     "description" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3),
     "userEmail" TEXT NOT NULL,
+    "parentId" TEXT,
+    "isArchived" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "Doc_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Resource_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Travel_resourceId_key" ON "Travel"("resourceId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Bank_name_key" ON "Bank"("name");
@@ -148,16 +136,16 @@ CREATE UNIQUE INDEX "Activity_name_key" ON "Activity"("name");
 CREATE UNIQUE INDEX "Receipt_recordId_key" ON "Receipt"("recordId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Receipt_imageId_key" ON "Receipt"("imageId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Page_imageId_key" ON "Page"("imageId");
+CREATE UNIQUE INDEX "Record_resourceId_key" ON "Record"("resourceId");
 
 -- AddForeignKey
 ALTER TABLE "Travel" ADD CONSTRAINT "Travel_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Travel" ADD CONSTRAINT "Travel_activityId_fkey" FOREIGN KEY ("activityId") REFERENCES "Activity"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Travel" ADD CONSTRAINT "Travel_resourceId_fkey" FOREIGN KEY ("resourceId") REFERENCES "Resource"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Activity" ADD CONSTRAINT "Activity_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -172,9 +160,6 @@ ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_merchantName_fkey" FOREIGN KEY ("m
 ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_recordId_fkey" FOREIGN KEY ("recordId") REFERENCES "Record"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Receipt" ADD CONSTRAINT "Receipt_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Record" ADD CONSTRAINT "Record_categoryName_fkey" FOREIGN KEY ("categoryName") REFERENCES "Category"("name") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -187,13 +172,10 @@ ALTER TABLE "Record" ADD CONSTRAINT "Record_bankName_fkey" FOREIGN KEY ("bankNam
 ALTER TABLE "Record" ADD CONSTRAINT "Record_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Image" ADD CONSTRAINT "Image_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Record" ADD CONSTRAINT "Record_resourceId_fkey" FOREIGN KEY ("resourceId") REFERENCES "Resource"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Page" ADD CONSTRAINT "Page_docId_fkey" FOREIGN KEY ("docId") REFERENCES "Doc"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Resource" ADD CONSTRAINT "Resource_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Page" ADD CONSTRAINT "Page_imageId_fkey" FOREIGN KEY ("imageId") REFERENCES "Image"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Doc" ADD CONSTRAINT "Doc_userEmail_fkey" FOREIGN KEY ("userEmail") REFERENCES "User"("email") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Resource" ADD CONSTRAINT "Resource_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Resource"("id") ON DELETE SET NULL ON UPDATE CASCADE;

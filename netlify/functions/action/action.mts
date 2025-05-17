@@ -1,8 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { Context } from "@netlify/functions";
-import { google } from "googleapis"; // Import Google API client
-import { Image } from "../types/models"; // Assurez-vous que le chemin est correct
 import { TableType } from "../types/tableType";
+import { authMiddleware } from "../authMiddleware";
 
 const prisma = new PrismaClient();
 
@@ -10,7 +9,6 @@ const VALID_TYPES = [
   "users",
   "records",
   "receipts",
-  "docs",
   "travels",
   "activities",
   "categories",
@@ -23,114 +21,12 @@ const VALID_ACTIONS = ["get", "add", "addBatch", "update", "delete"] as const;
 type ValidType = (typeof VALID_TYPES)[number];
 type ValidAction = (typeof VALID_ACTIONS)[number];
 
-// Configure Google Drive API
-const drive = google.drive({
-  version: "v3",
-  auth: process.env.GOOGLE_DRIVE_API_KEY, // Assurez-vous que cette clé est configurée dans vos variables d'environnement
-});
-
-// Utilitaire pour récupérer un fichier depuis Google Drive
-async function getGoogleDriveFile(fileId: string) {
-  try {
-    const response = await drive.files.get({
-      fileId: fileId!,
-      alt: "media",
-    });
-    return response.data;
-  } catch (error) {
-    throw new Error("Failed to fetch file from Google Drive");
-  }
-}
-
-// Utilitaire pour supprimer un fichier de Google Drive
-async function deleteGoogleDriveFile(fileId: string) {
-  try {
-    await drive.files.delete({ fileId });
-  } catch (error) {
-    throw new Error("Failed to delete file from Google Drive");
-  }
-}
-
-// Utilitaire pour ajouter une image dans Google Drive et la base de données
-async function addImage(body: Image) {
-  const { id, base64, ocrRawData, uploadedAt, userEmail, fileName, fileType } =
-    body;
-
-  console.log(process.env.GOOGLE_DRIVE_API_KEY);
-
-  if (!fileName || !base64) {
-    throw new Error("Missing fileName or fileContent for image");
-  }
-
-  const now = new Date().toISOString();
-
-  // Upload the image to Google Drive
-  const fileMetadata = { name: fileName };
-  const media = {
-    mimeType: "image/jpeg",
-    body: Buffer.from(base64, "base64"),
-  };
-
-  try {
-    const driveResponse = await drive.files.create({
-      requestBody: fileMetadata,
-      media,
-      fields: "id",
-    });
-    const fileId = driveResponse.data.id;
-
-    if (!fileId) {
-      throw new Error("Failed to retrieve fileId from Google Drive response");
-    }
-
-    // Save the fileId in the database
-    return await prisma.image.create({
-      data: {
-        id,
-        ocrRawData, // Données OCR extraites de l'image
-        uploadedAt, // Date d'upload de l'image
-        userEmail, // ID de l'utilisateur qui a uploadé l'imageProvide a valid user reference or null if optional
-        fileName, // Nom du fichier ajouté pour correspondre au type attendu
-        fileType, // Type de fichier ajouté pour correspondre au type attendu
-        fileLink: `https://drive.google.com/uc?id=${fileId}`, // Add the fileLink property with the Google Drive file URL
-      },
-    });
-  } catch (error) {
-    console.error("Error uploading file to Google Drive:", error);
-    throw new Error("Failed to upload file to Google Drive");
-  }
-}
-
-// Utilitaire pour récupérer une image depuis Google Drive
-async function getImage(fileId: string) {
-  if (!fileId) {
-    throw new Error("Missing fileId for image");
-  }
-  return await getGoogleDriveFile(fileId);
-}
-
-// Utilitaire pour supprimer une image depuis Google Drive et la base de données
-async function deleteImage(id: string) {
-  if (!id) {
-    throw new Error("Missing fileId for delete");
-  }
-
-  // Supprimer le fichier de Google Drive
-  await deleteGoogleDriveFile(id);
-
-  // Supprimer l'entrée correspondante dans la base de données
-  await prisma.image.delete({
-    where: { id },
-  });
-}
-
 // Fonction utilitaire pour obtenir le type Prisma correct
 function getPrismaType(type: ValidType): TableType {
   const typeMap: Record<ValidType, TableType> = {
     users: "user",
     records: "record",
     receipts: "receipt",
-    docs: "doc",
     travels: "travel",
     activities: "activity",
     categories: "category",
@@ -141,7 +37,10 @@ function getPrismaType(type: ValidType): TableType {
   return typeMap[type];
 }
 
-export default async (request: Request, context: Context) => {
+const action = async (
+  request: Request,
+  context: Context & { userData?: any }
+) => {
   try {
     const url = new URL(request.url);
     const type = url.searchParams.get("type") as ValidType;
@@ -149,6 +48,22 @@ export default async (request: Request, context: Context) => {
     const prismaType = type ? (getPrismaType(type) as string) : undefined;
     const action = url.searchParams.get("action") as ValidAction;
     const id = url.searchParams.get("id");
+    const userData = context.userData;
+
+    // Tables nécessitant un filtre par userEmail
+    const tablesRequiringUserEmail = [
+      "users",
+      "records",
+      "receipts",
+      "travels",
+      "activities",
+    ];
+
+    // Construire la clause where dynamiquement
+    const where: Record<string, any> = {};
+    if (tablesRequiringUserEmail.includes(type)) {
+      where.userEmail = userData.email;
+    }
 
     if (!type || !VALID_TYPES.includes(type) || !prismaType) {
       return new Response(
@@ -170,7 +85,6 @@ export default async (request: Request, context: Context) => {
 
     switch (action) {
       case "get": {
-       
         const page = parseInt(url.searchParams.get("page") || "1", 10);
         const pageSize = parseInt(url.searchParams.get("pageSize") || "10", 10);
 
@@ -187,6 +101,7 @@ export default async (request: Request, context: Context) => {
           const items = await prisma[prismaType].findMany({
             skip,
             take: pageSize,
+            where, // Ajouter la clause where
           });
 
           if (!items) {
@@ -195,7 +110,9 @@ export default async (request: Request, context: Context) => {
             });
           }
 
-          const totalItems = await prisma[prismaType].count();
+          const totalItems = await prisma[prismaType].count({
+            where, // Ajouter la clause where pour le comptage
+          });
           const totalPages = Math.ceil(totalItems / pageSize);
 
           return new Response(
@@ -211,6 +128,7 @@ export default async (request: Request, context: Context) => {
             { status: 200 }
           );
         } catch (error) {
+          console.error("Error fetching items:", error);
           return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
           });
@@ -218,7 +136,6 @@ export default async (request: Request, context: Context) => {
       }
 
       case "add": {
-       
         try {
           const body = await request.json();
           const now = new Date().toISOString();
@@ -235,7 +152,6 @@ export default async (request: Request, context: Context) => {
             )
           ) {
             // Construire la condition where basée sur les propriétés uniques
-            const where: Record<string, any> = {};
             uniqProps.forEach((prop) => {
               where[prop] = body[prop];
             });
@@ -248,6 +164,9 @@ export default async (request: Request, context: Context) => {
               },
               create: {
                 ...body,
+                userEmail: tablesRequiringUserEmail.includes(type)
+                  ? userData.email
+                  : undefined,
               },
             });
 
@@ -280,7 +199,6 @@ export default async (request: Request, context: Context) => {
           // Si on a des propriétés uniques, on utilise upsert
           if (uniqProps && uniqProps.length > 0) {
             // Construire la condition where basée sur les propriétés uniques
-            const where = {};
             uniqProps.forEach((prop) => {
               where[prop] = body[prop];
             });
@@ -294,6 +212,9 @@ export default async (request: Request, context: Context) => {
                   },
                   create: {
                     ...item,
+                    userEmail: tablesRequiringUserEmail.includes(type)
+                      ? userData.email
+                      : undefined,
                   },
                 })
               )
@@ -304,7 +225,12 @@ export default async (request: Request, context: Context) => {
             const newItems = await Promise.all(
               body.map((item: any) =>
                 prisma[prismaType].create({
-                  data: { ...item },
+                  data: {
+                    ...item,
+                    userEmail: tablesRequiringUserEmail.includes(type)
+                      ? userData.email
+                      : undefined,
+                  },
                 })
               )
             );
@@ -328,8 +254,11 @@ export default async (request: Request, context: Context) => {
         try {
           const body = await request.json();
           const now = new Date().toISOString();
+
+          where.id = id;
+
           const updatedItem = await prisma[prismaType].update({
-            where: { id },
+            where,
             data: { ...body, updatedAt: now },
           });
           if (!updatedItem) {
@@ -355,8 +284,9 @@ export default async (request: Request, context: Context) => {
         }
 
         try {
+          where.id = id;
           const deletedItem = await prisma[prismaType].delete({
-            where: { id },
+            where,
           });
           if (!deletedItem) {
             return new Response(
@@ -387,3 +317,5 @@ export default async (request: Request, context: Context) => {
     await prisma.$disconnect();
   }
 };
+
+export default authMiddleware(action);

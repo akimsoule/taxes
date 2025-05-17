@@ -5,7 +5,6 @@ import { DataProvider } from "./context/DataContext";
 // Pages
 import DashboardPage from "./pages/DashboardPage";
 import RecordsPage from "./pages/RecordsPage";
-import ReceiptsPage from "./pages/ReceiptsPage";
 import TravelsPage from "./pages/TravelsPage";
 import ActivitiesPage from "./pages/ActivitiesPage";
 import CategoriesPage from "./pages/CategoriesPage";
@@ -13,59 +12,55 @@ import BanksPage from "./pages/BanksPage";
 import Layout from "./layout/Layout";
 import { AuthContent, AuthProvider } from "./auth/AuthProvider";
 import MerchantsPage from "./pages/MerchantsPage";
-import ImagesPage from "./pages/ImagesPage";
-import DocsPage from "./pages/DocsPage";
-import BookViewPage from "./pages/BookViewPage";
-import FilesPage from "./pages/FilesPage";
+import ResourcePage from "./pages/ResourcePage";
+import { ServiceProvider } from "./services/ServiceContext";
 
 function App() {
   return (
     <AuthProvider>
       <AuthContent>
-        <DataProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<DashboardPage />} />
-                <Route path="records" element={<RecordsPage />} />
-                <Route path="receipts" element={<ReceiptsPage />} />
-                <Route path="docs" element={<DocsPage />} />
-                <Route path="/book-view/:docId" element={<BookViewPage />} />
-                <Route path="receiptImages" element={<ImagesPage />} />
-                <Route path="files" element={<FilesPage />} />
-                <Route path="travels" element={<TravelsPage />} />
-                <Route path="activities" element={<ActivitiesPage />} />
-                <Route path="categories" element={<CategoriesPage />} />
-                <Route path="merchants" element={<MerchantsPage />} />
-                <Route path="banks" element={<BanksPage />} />
-              </Route>
-            </Routes>
-          </Router>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: "#363636",
-                color: "#fff",
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#10B981",
-                  secondary: "white",
-                },
-              },
-              error: {
+        <ServiceProvider>
+          <DataProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<DashboardPage />} />
+                  <Route path="records" element={<RecordsPage />} />
+                  <Route path="resources" element={<ResourcePage />} />
+                  <Route path="travels" element={<TravelsPage />} />
+                  <Route path="activities" element={<ActivitiesPage />} />
+                  <Route path="categories" element={<CategoriesPage />} />
+                  <Route path="merchants" element={<MerchantsPage />} />
+                  <Route path="banks" element={<BanksPage />} />
+                </Route>
+              </Routes>
+            </Router>
+            <Toaster
+              position="top-right"
+              toastOptions={{
                 duration: 4000,
-                iconTheme: {
-                  primary: "#EF4444",
-                  secondary: "white",
+                style: {
+                  background: "#363636",
+                  color: "#fff",
                 },
-              },
-            }}
-          />
-        </DataProvider>
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: "#10B981",
+                    secondary: "white",
+                  },
+                },
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: "#EF4444",
+                    secondary: "white",
+                  },
+                },
+              }}
+            />
+          </DataProvider>
+        </ServiceProvider>
       </AuthContent>
     </AuthProvider>
   );

@@ -3,21 +3,20 @@ import { NavLink } from "react-router-dom";
 import {
   Home,
   FileText,
-  Receipt,
   Car,
   Activity,
   Tag,
   Building,
   UserIcon,
   Store,
-  Image,
+  Book, // Ajout de l'icône Book
 } from "lucide-react";
-import { User } from "../types/models";
+import { UserPayload } from "../types/models";
 
 type SidebarProps = {
   isOpen: boolean;
   toggleSidebar: () => void;
-  user: User | null;
+  user: UserPayload | null;
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, user }) => {
@@ -81,49 +80,70 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar, user }) => {
           )}
 
           <nav className="space-y-1">
-            <NavLink to="/" className={navLinkClass} end onClick={toggleSidebar}>
+            <NavLink
+              to="/"
+              className={navLinkClass}
+              end
+              onClick={toggleSidebar}
+            >
               <Home className="h-5 w-5" />
               <span>Dashboard</span>
             </NavLink>
-            <NavLink to="/records" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/records"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <FileText className="h-5 w-5" />
               <span>Records</span>
             </NavLink>
-            <NavLink to="/travels" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/travels"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <Car className="h-5 w-5" />
               <span>Travels</span>
             </NavLink>
-            <NavLink to="/activities" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/activities"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <Activity className="h-5 w-5" />
               <span>Activities</span>
             </NavLink>
-            <NavLink to="/categories" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/categories"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <Tag className="h-5 w-5" />
               <span>Categories</span>
             </NavLink>
-            <NavLink to="/merchants" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/merchants"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <Store className="h-5 w-5" />
               <span>Merchants</span>
             </NavLink>
-            <NavLink to="/banks" className={navLinkClass} onClick={toggleSidebar}>
+            <NavLink
+              to="/banks"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
               <Building className="h-5 w-5" />
               <span>Banks</span>
             </NavLink>
-            <NavLink to="/docs" className={navLinkClass} onClick={toggleSidebar}>
-              <Receipt className="h-5 w-5" />
-              <span>Documents</span>
-            </NavLink>
-            <NavLink to="/receipts" className={navLinkClass} onClick={toggleSidebar}>
-              <Receipt className="h-5 w-5" />
-              <span>Receipts</span>
-            </NavLink>
-            <NavLink to="/receiptImages" className={navLinkClass} onClick={toggleSidebar}>
-              <Image className="h-5 w-5" />
-              <span>Images</span>
-            </NavLink>
-            <NavLink to="/files" className={navLinkClass} onClick={toggleSidebar}>
-              <Image className="h-5 w-5" />
-              <span>Files</span>
+            <NavLink
+              to="/resources"
+              className={navLinkClass}
+              onClick={toggleSidebar}
+            >
+              <Book className="h-5 w-5" /> {/* Remplacement de l'icône */}
+              <span>Resources</span>
             </NavLink>
           </nav>
         </div>
