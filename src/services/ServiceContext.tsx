@@ -185,7 +185,8 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
 
   const addBatchItems = async (type: DataType, items: any[], uniqProps: string[]): Promise<any[]> => {
     try {
-      const response = await fetchWithSecureToken(`${apiUrl}?type=${type}&action=addBatch`, {
+      const uniqPropsParam = encodeURIComponent(uniqProps.join(","));
+      const response = await fetchWithSecureToken(`${apiUrl}?type=${type}&action=addBatch&uniqProps=${uniqPropsParam}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(items),
@@ -232,8 +233,9 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const updateItem = async (type: DataType, updatedItem: any, uniqProps: string[]): Promise<any> => {
     const now = new Date().toISOString();
     try {
+      const uniqPropsParam = encodeURIComponent(uniqProps.join(","));
       const response = await fetchWithSecureToken(
-        `${apiUrl}?type=${type}&action=update&id=${updatedItem.id}`,
+        `${apiUrl}?type=${type}&action=update&id=${updatedItem.id}&uniqProps=${uniqPropsParam}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -334,8 +336,9 @@ export const ServiceProvider = ({ children }: { children: ReactNode }) => {
   const updateResource = async (type: DataType, updatedResource: any, uniqProps: string[]): Promise<any> => {
     const now = new Date().toISOString();
     try {
+      const uniqPropsParam = encodeURIComponent(uniqProps.join(","));
       const response = await fetchWithSecureToken(
-        `${resourceApiUrl}?type=${type}&action=update&id=${updatedResource.id}`,
+        `${resourceApiUrl}?type=${type}&action=update&id=${updatedResource.id}&uniqProps=${uniqPropsParam}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
